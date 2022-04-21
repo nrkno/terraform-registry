@@ -116,7 +116,7 @@ func TestListModuleVersions(t *testing.T) {
 			`["1.0.0","1.2.3","2.0.0"]`,
 		},
 		{
-			"invalid module",
+			"unknown module",
 			"some/random/name",
 			http.StatusNotFound,
 			"Not Found\n",
@@ -143,6 +143,58 @@ func TestListModuleVersions(t *testing.T) {
 			is.NoErr(err)
 			is.Equal(resp.StatusCode, tc.status)
 			is.Equal(string(body), tc.body)
+
+			if tc.status == http.StatusOK {
+				is.Equal(resp.Header.Get("Content-Type"), "application/json")
+			}
+		})
+	}
+}
+
+func TestDownloadModule(t *testing.T) {
+	is := is.New(t)
+
+	app := App{
+		moduleStore: NewModuleStore(),
+	}
+	app.moduleStore.Set("nrkno/kubernetes-common/generic", []string{
+		"1.0.0",
+		"1.2.3",
+		"2.0.0",
+	})
+
+	testcases := []struct {
+		name         string
+		moduleString string
+		status       int
+		downloadURL  string
+	}{
+		{
+			"valid module",
+			"nrkno/kubernetes-common/generic/1.2.3",
+			http.StatusNoContent,
+			"https://api.github.com/repos/nrkno/kubernetes-common/tarball/1.2.3",
+		},
+		{
+			"unknown module",
+			"some/random/name/0.0.0",
+			http.StatusNotFound,
+			"",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+
+			req := httptest.NewRequest("GET", "/v1/modules/"+tc.moduleString+"/download", nil)
+			w := httptest.NewRecorder()
+
+			app.DownloadModule().ServeHTTP(w, req)
+
+			resp := w.Result()
+			is.Equal(resp.StatusCode, tc.status)
+			is.Equal(resp.Header.Get("X-Terraform-Get"), tc.downloadURL) // X-Terraform-Get header
 
 			if tc.status == http.StatusOK {
 				is.Equal(resp.Header.Get("Content-Type"), "application/json")

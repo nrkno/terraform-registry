@@ -2,22 +2,24 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
 func main() {
 	app := &App{
-		ListenAddr: ":8080",
-		Router:     mux.NewRouter(),
+		ListenAddr:  ":8080",
+		Router:      mux.NewRouter(),
+		moduleStore: NewModuleStore(),
 	}
-	//app.Router.
-	//	Use(app.TokenAuth)
 	app.Router.
 		HandleFunc("/.well-know/terraform.json", ServiceDiscovery).
 		Methods("GET")
@@ -27,7 +29,21 @@ func main() {
 	//app.Router.
 	//	HandleFunc("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload()).
 	//	Methods("GET")
-	app.ListenAndServe()
+	//app.Router.
+	//	Use(app.TokenAuth)
+	app.Router.NotFoundHandler = app.Router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
+
+	srv := http.Server{
+		Addr:              app.ListenAddr,
+		Handler:           handlers.LoggingHandler(os.Stdout, app.Router),
+		ReadTimeout:       3 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
+		WriteTimeout:      3 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	log.Printf("Starting HTTP server, listening on %s", app.ListenAddr)
+	srv.ListenAndServe()
 }
 
 type App struct {
@@ -48,18 +64,6 @@ type App struct {
 //		log.Panicf("LoadAuthTokenFile: %+v", err)
 //	}
 //}
-
-func (app *App) ListenAndServe() error {
-	srv := http.Server{
-		Addr:              app.ListenAddr,
-		Handler:           app.Router,
-		ReadTimeout:       3 * time.Second,
-		ReadHeaderTimeout: 3 * time.Second,
-		WriteTimeout:      3 * time.Second,
-		IdleTimeout:       60 * time.Second,
-	}
-	return srv.ListenAndServe()
-}
 
 // TokenAuth is a middleware function for token header authentication.
 func (app *App) TokenAuth(next http.Handler) http.Handler {
@@ -87,6 +91,42 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	})
+}
+
+// ModuleStore stores metadata for available modules.
+type ModuleStore struct {
+	versions map[string][]string
+}
+
+func NewModuleStore() *ModuleStore {
+	return &ModuleStore{
+		versions: make(map[string][]string),
+	}
+}
+
+// Set overwrites metadata for a module.
+func (ms *ModuleStore) Set(module string, versions []string) {
+	ms.versions[module] = versions
+}
+
+// Get returns the metadata for a module.
+func (ms *ModuleStore) Get(module string) []string {
+	return ms.versions[module]
+}
+
+// HasVersion tells whether a specific version is available for a specific module.
+// Will return `false` if the module doesn't exist.
+func (ms *ModuleStore) HasVersion(moduleName, version string) bool {
+	module := ms.Get(moduleName)
+	if module == nil {
+		return false
+	}
+	for _, v := range module {
+		if v == version {
+			return true
+		}
+	}
+	return false
 }
 
 // ServiceDiscovery is a handler that returns a JSON payload for Terraform service discovery.
@@ -145,20 +185,33 @@ func (app *App) ModuleVersions() http.HandlerFunc {
 	}
 }
 
-type ModuleStore struct {
-	versions map[string][]string
-}
+// DownloadModule returns a handler that returns a download link for a specific version of a module.
+// https://www.terraform.io/internals/module-registry-protocol#download-source-code-for-a-specific-module-version
+func (app *App) DownloadModule() http.HandlerFunc {
+	urlPat := regexp.MustCompile(`(?P<namespace>[\w-]+)/(?P<name>[\w-]+)/(?P<provider>[\w-]+)/(?P<version>[\w-.]+)/download$`)
 
-func NewModuleStore() *ModuleStore {
-	return &ModuleStore{
-		versions: make(map[string][]string),
+	return func(w http.ResponseWriter, r *http.Request) {
+		m := urlPat.FindStringSubmatch(r.URL.Path)
+		if m == nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		var (
+			namespace   = m[urlPat.SubexpIndex("namespace")]
+			name        = m[urlPat.SubexpIndex("name")]
+			provider    = m[urlPat.SubexpIndex("provider")]
+			version     = m[urlPat.SubexpIndex("version")]
+			module      = fmt.Sprintf("%s/%s/%s", namespace, name, provider)
+			downloadURL = fmt.Sprintf("https://api.github.com/repos/%s/%s/tarball/%s", namespace, name, version)
+		)
+
+		if !app.moduleStore.HasVersion(module, version) {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("X-Terraform-Get", downloadURL)
+		w.WriteHeader(http.StatusNoContent)
 	}
-}
-
-func (ms *ModuleStore) Set(module string, versions []string) {
-	ms.versions[module] = versions
-}
-
-func (ms *ModuleStore) Get(module string) []string {
-	return ms.versions[module]
 }
