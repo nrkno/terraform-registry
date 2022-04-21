@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,8 +16,17 @@ func main() {
 		ListenAddr: ":8080",
 		Router:     mux.NewRouter(),
 	}
-	app.Router.Use(app.TokenAuth)
-	app.Router.HandleFunc("/.well-know/terraform.json", ServiceDiscovery)
+	//app.Router.
+	//	Use(app.TokenAuth)
+	app.Router.
+		HandleFunc("/.well-know/terraform.json", ServiceDiscovery).
+		Methods("GET")
+	app.Router.
+		HandleFunc("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions()).
+		Methods("GET")
+	//app.Router.
+	//	HandleFunc("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload()).
+	//	Methods("GET")
 	app.ListenAndServe()
 }
 
@@ -25,19 +34,20 @@ type App struct {
 	ListenAddr string
 	Router     *mux.Router
 
-	authTokens []string
+	authTokens  []string
+	moduleStore *ModuleStore
 }
 
-func (app *App) LoadAuthTokenFile(filepath string) {
-	b, err := os.ReadFile(filepath)
-	if err != nil {
-		log.Panicf("LoadAuthTokenFile: %+v", err)
-	}
-
-	if err := json.Unmarshal(b, &app.authTokens); err != nil {
-		log.Panicf("LoadAuthTokenFile: %+v", err)
-	}
-}
+//func (app *App) LoadAuthTokenFile(filepath string) {
+//	b, err := os.ReadFile(filepath)
+//	if err != nil {
+//		log.Panicf("LoadAuthTokenFile: %+v", err)
+//	}
+//
+//	if err := json.Unmarshal(b, &app.authTokens); err != nil {
+//		log.Panicf("LoadAuthTokenFile: %+v", err)
+//	}
+//}
 
 func (app *App) ListenAndServe() error {
 	srv := http.Server{
@@ -51,7 +61,7 @@ func (app *App) ListenAndServe() error {
 	return srv.ListenAndServe()
 }
 
-// Middleware for token header authentication.
+// TokenAuth is a middleware function for token header authentication.
 func (app *App) TokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
@@ -79,6 +89,8 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 	})
 }
 
+// ServiceDiscovery is a handler that returns a JSON payload for Terraform service discovery.
+//
 // Given a hostname, discovery begins by forming an initial discovery URL using
 // that hostname with the https: scheme and the fixed path /.well-known/terraform.json
 // - https://www.terraform.io/internals/login-protocol
@@ -101,20 +113,52 @@ func ServiceDiscovery(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// https://www.terraform.io/internals/module-registry-protocol#module-addresses
-type Module struct {
-	// The hostname of the module registry that serves this module
-	Hostname string
-	// The name of a namespace, unique on a particular hostname,
-	// that can contain one or more modules that are somehow related.
-	Namespace string
-	// The module name, which generally names the abstraction that
-	// the module is intending to create.
-	Name string
-	// The name of a remote system that the module is primarily written to target.
-	// The system name commonly matches the type portion of the address of an official
-	// provider, like aws or azurerm in the above examples, but that is not required
-	// and so you can use whichever system keywords make sense for the organization
-	// of your particular registry.
-	System string
+// ModuleVersions returns a handler that returns a list of available versions for a module.
+// - https://www.terraform.io/internals/module-registry-protocol#list-available-versions-for-a-specific-module
+func (app *App) ModuleVersions() http.HandlerFunc {
+	// :namespace/:name/:system/versions
+	urlPattern := regexp.MustCompile(`([\w-]+/[\w-]+/[\w-]+)/versions$`)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		m := urlPattern.FindStringSubmatch(r.URL.Path)
+		if m == nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		module := m[1]
+		versions := app.moduleStore.Get(module)
+		if versions == nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		b, err := json.Marshal(versions)
+		if err != nil {
+			log.Printf("ModuleVersions: %+v", err)
+		}
+
+		if _, err := w.Write(b); err != nil {
+			log.Printf("ModuleVersions: %+v", err)
+		}
+	}
+}
+
+type ModuleStore struct {
+	versions map[string][]string
+}
+
+func NewModuleStore() *ModuleStore {
+	return &ModuleStore{
+		versions: make(map[string][]string),
+	}
+}
+
+func (ms *ModuleStore) Set(module string, versions []string) {
+	ms.versions[module] = versions
+}
+
+func (ms *ModuleStore) Get(module string) []string {
+	return ms.versions[module]
 }
