@@ -3,6 +3,7 @@ terraform {
 }
 
 module "foo" {
-  source  = "localhost.localdomain:8080/nrkno/foo/foo"
-  version = "2.1.1"
+  source  = "localhost.localdomain:8080/stigok/plattform-terraform-repository-release-test/generic//akamai-property"
+  version = "~> 2.0"
+  #source = "git::ssh://git@github.com/stigok/plattform-terraform-repository-release-test.git//akamai-property"
 }

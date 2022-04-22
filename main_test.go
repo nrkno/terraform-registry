@@ -97,10 +97,25 @@ func TestListModuleVersions(t *testing.T) {
 	app := App{
 		moduleStore: NewModuleStore(),
 	}
-	app.moduleStore.Set("hashicorp/consul/aws", []string{
-		"1.0.0",
-		"1.2.3",
-		"2.0.0",
+
+	app.moduleStore.Set("hashicorp/consul/aws", Module{
+		Namespace: "hashicorp",
+		Name:      "consul",
+		System:    "aws",
+		Versions: []ModuleVersion{
+			{
+				Version:     "1.1.1",
+				DownloadURL: "example.com/foo",
+			},
+			{
+				Version:     "2.2.2",
+				DownloadURL: "example.com/foo",
+			},
+			{
+				Version:     "3.3.3",
+				DownloadURL: "example.com/foo",
+			},
+		},
 	})
 
 	testcases := []struct {
@@ -113,7 +128,7 @@ func TestListModuleVersions(t *testing.T) {
 			"valid module",
 			"hashicorp/consul/aws",
 			http.StatusOK,
-			`["1.0.0","1.2.3","2.0.0"]`,
+			`{"modules":[{"versions":[{"version":"1.1.1"},{"version":"2.2.2"},{"version":"3.3.3"}]}]}`,
 		},
 		{
 			"unknown module",
@@ -151,16 +166,31 @@ func TestListModuleVersions(t *testing.T) {
 	}
 }
 
-func TestDownloadModule(t *testing.T) {
+func TestModuleDownload(t *testing.T) {
 	is := is.New(t)
 
 	app := App{
 		moduleStore: NewModuleStore(),
 	}
-	app.moduleStore.Set("nrkno/kubernetes-common/generic", []string{
-		"1.0.0",
-		"1.2.3",
-		"2.0.0",
+
+	app.moduleStore.Set("hashicorp/consul/aws", Module{
+		Namespace: "hashicorp",
+		Name:      "consul",
+		System:    "aws",
+		Versions: []ModuleVersion{
+			{
+				Version:     "1.1.1",
+				DownloadURL: "example.com/foo",
+			},
+			{
+				Version:     "2.2.2",
+				DownloadURL: "example.com/foo",
+			},
+			{
+				Version:     "3.3.3",
+				DownloadURL: "example.com/foo",
+			},
+		},
 	})
 
 	testcases := []struct {
@@ -171,9 +201,9 @@ func TestDownloadModule(t *testing.T) {
 	}{
 		{
 			"valid module",
-			"nrkno/kubernetes-common/generic/1.2.3",
+			"hashicorp/consul/aws/2.2.2",
 			http.StatusNoContent,
-			"https://api.github.com/repos/nrkno/kubernetes-common/tarball/1.2.3",
+			"example.com/foo",
 		},
 		{
 			"unknown module",
@@ -190,7 +220,7 @@ func TestDownloadModule(t *testing.T) {
 			req := httptest.NewRequest("GET", "/v1/modules/"+tc.moduleString+"/download", nil)
 			w := httptest.NewRecorder()
 
-			app.DownloadModule().ServeHTTP(w, req)
+			app.ModuleDownload().ServeHTTP(w, req)
 
 			resp := w.Result()
 			is.Equal(resp.StatusCode, tc.status)

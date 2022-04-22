@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -8,54 +9,66 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
-type Module struct {
-	Namespace string
-	Name      string
-	System    string
-	Versions  []ModuleVersion
-}
-
-type ModuleVersion struct {
-	Name        string
-	DownloadURL string
-}
-
-type ModuleStorer interface {
-	Get(key string) Module
-	Set(key string, m Module)
-}
-
-type ModuleStore struct {
-	store map[string]Module
-}
-
-func NewModuleStore() *ModuleStore {
-	return &ModuleStore{
-		store: make(map[string]Module),
-	}
-}
-
 func main() {
+	log.Default().SetFlags(log.Lshortfile)
+
 	app := &App{
 		ListenAddr:  ":8080",
 		Router:      mux.NewRouter(),
 		moduleStore: NewModuleStore(),
+		ghclient:    NewGitHubClient(os.Getenv("GITHUB_TOKEN")),
 	}
+
+	if err := app.ghclient.TestCredentials(context.Background()); err != nil {
+		log.Fatalf("error: github credential test: %v", err)
+	}
+
+	//moduleRepos, err := app.ghclient.ListUserRepositoriesByTopic(context.Background(), "nrkno")
+	//if err != nil {
+	//	log.Fatalf("error: failed to get repositories: %v", err)
+	//}
+
+	//app.LoadGitHubRepositories(context.Background(), []string{
+	//	"stigok/plattform-terraform-repository-release-test",
+	//})
+
 	app.Router.
 		HandleFunc("/.well-known/terraform.json", ServiceDiscovery).
 		Methods("GET")
 	app.Router.
-		HandleFunc("/terraform/modules/v1/{namespace}/{name}/{system}/versions", app.ModuleVersions()).
+		HandleFunc("/v1/modules/stigok/plattform-terraform-repository-release-test/generic/versions", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{
+   "modules": [
+      {
+         "versions": [
+  			{"version": "1.0.0"},
+            {"version": "1.1.0"},
+            {"version": "2.0.0"}
+         ]
+      }
+   ]
+}`))
+		}).Methods("GET")
+	app.Router.
+		HandleFunc("/v1/modules/stigok/plattform-terraform-repository-release-test/generic/2.0.0/download", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Terraform-Get", "git::ssh://git@github.com/stigok/plattform-terraform-repository-release-test.git")
+			w.WriteHeader(http.StatusNoContent)
+		}).Methods("GET")
+
+	app.Router.
+		HandleFunc("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions()).
 		Methods("GET")
-	//app.Router.
-	//	HandleFunc("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload()).
-	//	Methods("GET")
+	app.Router.
+		HandleFunc("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload()).
+		Methods("GET")
 	//app.Router.
 	//	Use(app.TokenAuth)
 	app.Router.NotFoundHandler = app.Router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
@@ -73,12 +86,121 @@ func main() {
 	srv.ListenAndServeTLS("/home/n645863/tmp/ssl-selfsigned/cert.crt", "/home/n645863/tmp/ssl-selfsigned/cert.key")
 }
 
+type Module struct {
+	Namespace string          `json:"-"`
+	Name      string          `json:"-"`
+	System    string          `json:"-"`
+	Versions  []ModuleVersion `json:"versions"`
+}
+
+func (m *Module) String() string {
+	return fmt.Sprintf("%s/%s/%s", m.Namespace, m.Name, m.System)
+}
+
+func (m *Module) ListVersions() []string {
+	s := make([]string, len(m.Versions))
+	for i, v := range m.Versions {
+		s[i] = v.Version
+	}
+	return s
+}
+
+func (m *Module) GetVersion(version string) *ModuleVersion {
+	for _, v := range m.Versions {
+		if v.Version == version {
+			return &v
+		}
+	}
+	return nil
+}
+
+type ModuleVersion struct {
+	Version     string `json:"version"`
+	DownloadURL string `json:"-"`
+}
+
+//type ModuleStorer interface {
+//	Get(key string) Module
+//	Set(key string, m Module)
+//}
+
+type ModuleStore struct {
+	store map[string]Module
+	mut   sync.RWMutex
+}
+
+func NewModuleStore() *ModuleStore {
+	return &ModuleStore{
+		store: make(map[string]Module),
+	}
+}
+
+func (ms *ModuleStore) Get(key string) *Module {
+	ms.mut.RLock()
+	defer ms.mut.RUnlock()
+
+	m, ok := ms.store[key]
+	if !ok {
+		return nil
+	}
+	return &m
+}
+
+func (ms *ModuleStore) Set(key string, m Module) {
+	ms.mut.Lock()
+	defer ms.mut.Unlock()
+	ms.store[key] = m
+}
+
 type App struct {
 	ListenAddr string
 	Router     *mux.Router
 
 	authTokens  []string
 	moduleStore *ModuleStore
+	ghclient    *GitHubClient
+}
+
+func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
+	for _, repoRef := range repos {
+		parts := strings.SplitN(repoRef, "/", 2)
+		if len(parts) != 2 {
+			log.Printf("error: LoadGitHubRepositories: invalid repo reference '%s'. should be in the form 'owner/repo'.", repos)
+			continue
+		}
+
+		var (
+			repoOwner = parts[0]
+			repoName  = parts[1]
+		)
+
+		tctx, _ := context.WithTimeout(ctx, 5*time.Second)
+		tags, err := app.ghclient.GetRepoTags(tctx, repoOwner, repoName)
+		if err != nil {
+			log.Printf("error: LoadGitHubRepositories: %v", err)
+			continue
+		}
+
+		if len(tags) == 0 {
+			log.Printf("debug: LoadGitHubRepositories: no tags for repo %s/%s found.", repoOwner, repoName)
+			continue
+		}
+
+		m := Module{
+			Namespace: repoOwner,
+			Name:      repoName,
+			System:    "generic", // Required by Terraform, but we don't want to segment the modules into systems (could be any string).
+			Versions:  make([]ModuleVersion, len(tags)),
+		}
+		for i, tag := range tags {
+			m.Versions[i] = ModuleVersion{
+				Version:     strings.TrimPrefix(*tag.Name, "v"), // Some tags may look like `v1.2.3`
+				DownloadURL: *tag.TarballURL,
+			}
+		}
+
+		app.moduleStore.Set(m.String(), m)
+	}
 }
 
 //func (app *App) LoadAuthTokenFile(filepath string) {
@@ -98,6 +220,7 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 		auth := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
 		if len(auth) != 2 {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			log.Println("error: TokenAuth: invalid or missing Authorization header.")
 			return
 		}
 
@@ -106,6 +229,7 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 
 		if tokenType != "Bearer" {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			log.Printf("error: TokenAuth: Authorization header value not of type 'Bearer', but '%s'.", tokenType)
 			return
 		}
 
@@ -118,42 +242,6 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	})
-}
-
-// ModuleStore stores metadata for available modules.
-type ModuleStore struct {
-	versions map[string][]string
-}
-
-func NewModuleStore() *ModuleStore {
-	return &ModuleStore{
-		versions: make(map[string][]string),
-	}
-}
-
-// Set overwrites metadata for a module.
-func (ms *ModuleStore) Set(module string, versions []string) {
-	ms.versions[module] = versions
-}
-
-// Get returns the metadata for a module.
-func (ms *ModuleStore) Get(module string) []string {
-	return ms.versions[module]
-}
-
-// HasVersion tells whether a specific version is available for a specific module.
-// Will return `false` if the module doesn't exist.
-func (ms *ModuleStore) HasVersion(moduleName, version string) bool {
-	module := ms.Get(moduleName)
-	if module == nil {
-		return false
-	}
-	for _, v := range module {
-		if v == version {
-			return true
-		}
-	}
-	return false
 }
 
 // ServiceDiscovery is a handler that returns a JSON payload for Terraform service discovery.
@@ -176,46 +264,14 @@ func ServiceDiscovery(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if _, err := w.Write(spec); err != nil {
-		log.Printf("ServiceDiscovery: %+v", err)
+		log.Printf("error: ServiceDiscovery: %+v", err)
 	}
 }
 
 // ModuleVersions returns a handler that returns a list of available versions for a module.
 // - https://www.terraform.io/internals/module-registry-protocol#list-available-versions-for-a-specific-module
 func (app *App) ModuleVersions() http.HandlerFunc {
-	// :namespace/:name/:system/versions
-	urlPattern := regexp.MustCompile(`([\w-]+/[\w-]+/[\w-]+)/versions$`)
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		m := urlPattern.FindStringSubmatch(r.URL.Path)
-		if m == nil {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
-
-		module := m[1]
-		versions := app.moduleStore.Get(module)
-		if versions == nil {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		b, err := json.Marshal(versions)
-		if err != nil {
-			log.Printf("ModuleVersions: %+v", err)
-		}
-
-		if _, err := w.Write(b); err != nil {
-			log.Printf("ModuleVersions: %+v", err)
-		}
-	}
-}
-
-// DownloadModule returns a handler that returns a download link for a specific version of a module.
-// https://www.terraform.io/internals/module-registry-protocol#download-source-code-for-a-specific-module-version
-func (app *App) DownloadModule() http.HandlerFunc {
-	urlPat := regexp.MustCompile(`(?P<namespace>[\w-]+)/(?P<name>[\w-]+)/(?P<provider>[\w-]+)/(?P<version>[\w-.]+)/download$`)
+	urlPat := regexp.MustCompile(`(?P<namespace>[\w-]+)/(?P<name>[\w-]+)/(?P<provider>[\w-]+)/versions$`)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		m := urlPat.FindStringSubmatch(r.URL.Path)
@@ -225,20 +281,66 @@ func (app *App) DownloadModule() http.HandlerFunc {
 		}
 
 		var (
-			namespace   = m[urlPat.SubexpIndex("namespace")]
-			name        = m[urlPat.SubexpIndex("name")]
-			provider    = m[urlPat.SubexpIndex("provider")]
-			version     = m[urlPat.SubexpIndex("version")]
-			module      = fmt.Sprintf("%s/%s/%s", namespace, name, provider)
-			downloadURL = fmt.Sprintf("https://api.github.com/repos/%s/%s/tarball/%s", namespace, name, version)
+			namespace = m[urlPat.SubexpIndex("namespace")]
+			name      = m[urlPat.SubexpIndex("name")]
+			provider  = m[urlPat.SubexpIndex("provider")]
+			key       = fmt.Sprintf("%s/%s/%s", namespace, name, provider)
 		)
 
-		if !app.moduleStore.HasVersion(module, version) {
+		module := app.moduleStore.Get(key)
+		if module == nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			log.Printf("error: ModuleVersions: module '%s' not found.", key)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		respObj := struct {
+			Modules []*Module `json:"modules"`
+		}{
+			Modules: []*Module{module},
+		}
+		b, err := json.Marshal(respObj)
+		if err != nil {
+			log.Printf("error: ModuleVersions: %+v", err)
+		}
+
+		//_, err = fmt.Fprintf(w, `{"modules":[{"versions":%s}]}`, b)
+		if _, err := w.Write(b); err != nil {
+			log.Printf("error: ModuleVersions: %+v", err)
+		}
+	}
+}
+
+// ModuleDownload returns a handler that returns a download link for a specific version of a module.
+// https://www.terraform.io/internals/module-registry-protocol#download-source-code-for-a-specific-module-version
+func (app *App) ModuleDownload() http.HandlerFunc {
+	urlPat := regexp.MustCompile(`(?P<namespace>[\w-]+)/(?P<name>[\w-]+)/(?P<provider>[\w-]+)/(?P<version>[\w-.]+)/download$`)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		m := urlPat.FindStringSubmatch(r.URL.Path)
+		if m == nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
 
-		w.Header().Set("X-Terraform-Get", downloadURL)
+		key := fmt.Sprintf("%s/%s/%s", m[urlPat.SubexpIndex("namespace")], m[urlPat.SubexpIndex("name")], m[urlPat.SubexpIndex("provider")])
+		module := app.moduleStore.Get(key)
+		if module == nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			log.Printf("error: ModuleDownload: module '%s' not found.", module)
+			return
+		}
+
+		version := module.GetVersion(m[urlPat.SubexpIndex("version")])
+		if version == nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			log.Printf("error: ModuleDownload: version '%s' not found for module '%s'.", m[urlPat.SubexpIndex("version")], module)
+			return
+		}
+
+		//w.Header().Set("X-Terraform-Get", version.DownloadURL)
+		w.Header().Set("X-Terraform-Get", "https://api.github.com/repos/hashicorp/terraform-aws-consul/tarball/v0.0.1//*?archive=tar.gz")
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
