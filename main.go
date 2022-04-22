@@ -21,10 +21,10 @@ func main() {
 
 	app := &App{
 		ListenAddr:  ":8080",
-		Router:      mux.NewRouter(),
 		moduleStore: NewModuleStore(),
 		ghclient:    NewGitHubClient(os.Getenv("GITHUB_TOKEN")),
 	}
+	app.SetupRouter()
 
 	if err := app.ghclient.TestCredentials(context.Background()); err != nil {
 		log.Fatalf("error: github credential test: %v", err)
@@ -39,10 +39,25 @@ func main() {
 	//	"stigok/plattform-terraform-repository-release-test",
 	//})
 
-	app.Router.
+	srv := http.Server{
+		Addr:              app.ListenAddr,
+		Handler:           handlers.LoggingHandler(os.Stdout, app.router),
+		ReadTimeout:       3 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
+		WriteTimeout:      3 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	log.Printf("Starting HTTP server, listening on %s", app.ListenAddr)
+	srv.ListenAndServeTLS("/home/n645863/tmp/ssl-selfsigned/cert.crt", "/home/n645863/tmp/ssl-selfsigned/cert.key")
+}
+
+func (app *App) SetupRouter() {
+	app.router = mux.NewRouter()
+	app.router.
 		HandleFunc("/.well-known/terraform.json", ServiceDiscovery).
 		Methods("GET")
-	app.Router.
+	app.router.
 		HandleFunc("/v1/modules/stigok/plattform-terraform-repository-release-test/generic/versions", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{
@@ -57,33 +72,21 @@ func main() {
    ]
 }`))
 		}).Methods("GET")
-	app.Router.
+	app.router.
 		HandleFunc("/v1/modules/stigok/plattform-terraform-repository-release-test/generic/2.0.0/download", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Terraform-Get", "git::ssh://git@github.com/stigok/plattform-terraform-repository-release-test.git")
 			w.WriteHeader(http.StatusNoContent)
 		}).Methods("GET")
 
-	app.Router.
+	app.router.
 		HandleFunc("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions()).
 		Methods("GET")
-	app.Router.
+	app.router.
 		HandleFunc("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload()).
 		Methods("GET")
 	//app.Router.
 	//	Use(app.TokenAuth)
-	app.Router.NotFoundHandler = app.Router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
-
-	srv := http.Server{
-		Addr:              app.ListenAddr,
-		Handler:           handlers.LoggingHandler(os.Stdout, app.Router),
-		ReadTimeout:       3 * time.Second,
-		ReadHeaderTimeout: 3 * time.Second,
-		WriteTimeout:      3 * time.Second,
-		IdleTimeout:       60 * time.Second,
-	}
-
-	log.Printf("Starting HTTP server, listening on %s", app.ListenAddr)
-	srv.ListenAndServeTLS("/home/n645863/tmp/ssl-selfsigned/cert.crt", "/home/n645863/tmp/ssl-selfsigned/cert.key")
+	app.router.NotFoundHandler = app.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
 }
 
 type Module struct {
@@ -154,7 +157,7 @@ func (ms *ModuleStore) Set(key string, m Module) {
 
 type App struct {
 	ListenAddr string
-	Router     *mux.Router
+	router     *mux.Router
 
 	authTokens  []string
 	moduleStore *ModuleStore

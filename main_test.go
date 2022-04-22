@@ -35,13 +35,13 @@ func TestTokenAuth(t *testing.T) {
 	is := is.New(t)
 
 	app := App{
-		Router: mux.NewRouter(),
+		router: mux.NewRouter(),
 		authTokens: []string{
 			"valid",
 		},
 	}
-	app.Router.Use(app.TokenAuth)
-	app.Router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	app.router.Use(app.TokenAuth)
+	app.router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "authenticated")
 	})
 
@@ -79,7 +79,7 @@ func TestTokenAuth(t *testing.T) {
 			req.Header.Set("Authorization", "Bearer "+tc.token)
 			w := httptest.NewRecorder()
 
-			app.Router.ServeHTTP(w, req)
+			app.router.ServeHTTP(w, req)
 
 			resp := w.Result()
 			body, err := io.ReadAll(resp.Body)
