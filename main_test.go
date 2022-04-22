@@ -15,7 +15,7 @@ import (
 func TestServiceDiscovery(t *testing.T) {
 	is := is.New(t)
 
-	req := httptest.NewRequest("GET", "/.well-know/terraform.json", nil)
+	req := httptest.NewRequest("GET", "/.well-known/terraform.json", nil)
 
 	w := httptest.NewRecorder()
 	ServiceDiscovery(w, req)

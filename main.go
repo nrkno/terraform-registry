@@ -14,6 +14,33 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type Module struct {
+	Namespace string
+	Name      string
+	System    string
+	Versions  []ModuleVersion
+}
+
+type ModuleVersion struct {
+	Name        string
+	DownloadURL string
+}
+
+type ModuleStorer interface {
+	Get(key string) Module
+	Set(key string, m Module)
+}
+
+type ModuleStore struct {
+	store map[string]Module
+}
+
+func NewModuleStore() *ModuleStore {
+	return &ModuleStore{
+		store: make(map[string]Module),
+	}
+}
+
 func main() {
 	app := &App{
 		ListenAddr:  ":8080",
@@ -21,10 +48,10 @@ func main() {
 		moduleStore: NewModuleStore(),
 	}
 	app.Router.
-		HandleFunc("/.well-know/terraform.json", ServiceDiscovery).
+		HandleFunc("/.well-known/terraform.json", ServiceDiscovery).
 		Methods("GET")
 	app.Router.
-		HandleFunc("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions()).
+		HandleFunc("/terraform/modules/v1/{namespace}/{name}/{system}/versions", app.ModuleVersions()).
 		Methods("GET")
 	//app.Router.
 	//	HandleFunc("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload()).
@@ -43,7 +70,7 @@ func main() {
 	}
 
 	log.Printf("Starting HTTP server, listening on %s", app.ListenAddr)
-	srv.ListenAndServe()
+	srv.ListenAndServeTLS("/home/n645863/tmp/ssl-selfsigned/cert.crt", "/home/n645863/tmp/ssl-selfsigned/cert.key")
 }
 
 type App struct {
@@ -137,7 +164,7 @@ func (ms *ModuleStore) HasVersion(moduleName, version string) bool {
 // - https://www.terraform.io/internals/module-registry-protocol
 func ServiceDiscovery(w http.ResponseWriter, r *http.Request) {
 	spec := []byte(`{
-  "modules.v1": "/terraform/modules/v1/",
+  "modules.v1": "/v1/modules/",
   "login.v1": {
     "client": "terraform-cli",
     "grant_types": ["authz_code"],
