@@ -68,7 +68,7 @@ func (app *App) SetupRouter() {
 	app.router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Terraform Registry\n")
 	})
-	app.router.Get("/.well-known/terraform.json", ServiceDiscovery)
+	app.router.Get("/.well-known/terraform.json", app.ServiceDiscovery())
 	app.router.Get("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions())
 	app.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload())
 
@@ -166,8 +166,9 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 // that hostname with the https: scheme and the fixed path /.well-known/terraform.json
 // - https://www.terraform.io/internals/login-protocol
 // - https://www.terraform.io/internals/module-registry-protocol
-func ServiceDiscovery(w http.ResponseWriter, r *http.Request) {
-	spec := []byte(`{
+func (app *App) ServiceDiscovery() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		spec := []byte(`{
   "modules.v1": "/v1/modules/",
   "login.v1": {
     "client": "terraform-cli",
@@ -178,9 +179,10 @@ func ServiceDiscovery(w http.ResponseWriter, r *http.Request) {
   }
 }`)
 
-	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(spec); err != nil {
-		log.Printf("error: ServiceDiscovery: %+v", err)
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write(spec); err != nil {
+			log.Printf("error: ServiceDiscovery: %+v", err)
+		}
 	}
 }
 

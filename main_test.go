@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -15,9 +16,13 @@ func TestServiceDiscovery(t *testing.T) {
 	is := is.New(t)
 
 	req := httptest.NewRequest("GET", "/.well-known/terraform.json", nil)
-
 	w := httptest.NewRecorder()
-	ServiceDiscovery(w, req)
+
+	app := App{
+		IsAuthDisabled: true,
+	}
+	app.SetupRouter()
+	app.router.ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -26,8 +31,15 @@ func TestServiceDiscovery(t *testing.T) {
 	is.Equal(resp.Header.Get("Content-Type"), "application/json")
 	is.True(len(body) > 1)
 
-	err := json.Unmarshal(body, &struct{}{})
+	var compactJSON bytes.Buffer
+	err := json.Compact(&compactJSON, body)
 	is.NoErr(err)
+
+	is.Equal(
+		compactJSON.String(),
+		`{"modules.v1":"/v1/modules/","login.v1":{"client":"terraform-cli","grant_types":["authz_code"],"authz":"/oauth/authorization","token":"/oauth/token","ports":[10000,10010]}}`,
+	)
+
 }
 
 func TestTokenAuth(t *testing.T) {
