@@ -64,9 +64,7 @@ func (app *App) SetupRouter() {
 	app.router = chi.NewRouter()
 	app.router.Use(middleware.Logger)
 	app.router.Use(app.TokenAuth)
-	app.router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Terraform Registry\n")
-	})
+	app.router.Get("/", app.Index())
 	app.router.Get("/.well-known/terraform.json", app.ServiceDiscovery())
 	app.router.Get("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions())
 	app.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload())
@@ -157,6 +155,15 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	})
+}
+
+func (app *App) Index() http.HandlerFunc {
+	resp := []byte("Terraform Registry\n")
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write(resp); err != nil {
+			log.Printf("error: Index: %v", err)
+		}
+	}
 }
 
 // ServiceDiscovery is a handler that returns a JSON payload for Terraform service discovery.
