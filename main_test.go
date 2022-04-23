@@ -102,19 +102,10 @@ func TestListModuleVersions(t *testing.T) {
 		Namespace: "hashicorp",
 		Name:      "consul",
 		System:    "aws",
-		Versions: []ModuleVersion{
-			{
-				Version:     "1.1.1",
-				DownloadURL: "example.com/foo",
-			},
-			{
-				Version:     "2.2.2",
-				DownloadURL: "example.com/foo",
-			},
-			{
-				Version:     "3.3.3",
-				DownloadURL: "example.com/foo",
-			},
+		Versions: []string{
+			"1.1.1",
+			"2.2.2",
+			"3.3.3",
 		},
 	})
 
@@ -177,19 +168,10 @@ func TestModuleDownload(t *testing.T) {
 		Namespace: "hashicorp",
 		Name:      "consul",
 		System:    "aws",
-		Versions: []ModuleVersion{
-			{
-				Version:     "1.1.1",
-				DownloadURL: "example.com/foo",
-			},
-			{
-				Version:     "2.2.2",
-				DownloadURL: "example.com/foo",
-			},
-			{
-				Version:     "3.3.3",
-				DownloadURL: "example.com/foo",
-			},
+		Versions: []string{
+			"1.1.1",
+			"2.2.2",
+			"3.3.3",
 		},
 	})
 
@@ -203,7 +185,7 @@ func TestModuleDownload(t *testing.T) {
 			"valid module",
 			"hashicorp/consul/aws/2.2.2",
 			http.StatusNoContent,
-			"example.com/foo",
+			"git::ssh://git@github.com/hashicorp/consul.git?ref=2.2.2",
 		},
 		{
 			"unknown module",

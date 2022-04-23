@@ -57,43 +57,27 @@ func (app *App) SetupRouter() {
 	app.router.
 		HandleFunc("/.well-known/terraform.json", ServiceDiscovery).
 		Methods("GET")
-	app.router.
-		HandleFunc("/v1/modules/stigok/plattform-terraform-repository-release-test/generic/versions", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{
-   "modules": [
-      {
-         "versions": [
-  			{"version": "1.0.0"},
-            {"version": "1.1.0"},
-            {"version": "2.0.0"}
-         ]
-      }
-   ]
-}`))
-		}).Methods("GET")
-	app.router.
-		HandleFunc("/v1/modules/stigok/plattform-terraform-repository-release-test/generic/2.0.0/download", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("X-Terraform-Get", "git::ssh://git@github.com/stigok/plattform-terraform-repository-release-test.git")
-			w.WriteHeader(http.StatusNoContent)
-		}).Methods("GET")
 
 	app.router.
 		HandleFunc("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions()).
 		Methods("GET")
+
 	app.router.
 		HandleFunc("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload()).
 		Methods("GET")
+
 	//app.Router.
 	//	Use(app.TokenAuth)
+
+	// Work-around to trigger log handler on non-matching 404's
 	app.router.NotFoundHandler = app.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
 }
 
 type Module struct {
-	Namespace string          `json:"-"`
-	Name      string          `json:"-"`
-	System    string          `json:"-"`
-	Versions  []ModuleVersion `json:"versions"`
+	Namespace string   `json:"-"`
+	Name      string   `json:"-"`
+	System    string   `json:"-"`
+	Versions  []string `json:"versions"`
 }
 
 func (m *Module) String() string {
@@ -101,31 +85,22 @@ func (m *Module) String() string {
 }
 
 func (m *Module) ListVersions() []string {
-	s := make([]string, len(m.Versions))
-	for i, v := range m.Versions {
-		s[i] = v.Version
-	}
-	return s
+	return m.Versions
 }
 
-func (m *Module) GetVersion(version string) *ModuleVersion {
+//type ModuleVersion struct {
+//	Version     string `json:"version"`
+//	DownloadURL string `json:"-"`
+//}
+
+func (m *Module) HasVersion(version string) bool {
 	for _, v := range m.Versions {
-		if v.Version == version {
-			return &v
+		if v == version {
+			return true
 		}
 	}
-	return nil
+	return false
 }
-
-type ModuleVersion struct {
-	Version     string `json:"version"`
-	DownloadURL string `json:"-"`
-}
-
-//type ModuleStorer interface {
-//	Get(key string) Module
-//	Set(key string, m Module)
-//}
 
 type ModuleStore struct {
 	store map[string]Module
@@ -193,13 +168,10 @@ func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
 			Namespace: repoOwner,
 			Name:      repoName,
 			System:    "generic", // Required by Terraform, but we don't want to segment the modules into systems (could be any string).
-			Versions:  make([]ModuleVersion, len(tags)),
+			Versions:  make([]string, len(tags)),
 		}
 		for i, tag := range tags {
-			m.Versions[i] = ModuleVersion{
-				Version:     strings.TrimPrefix(*tag.Name, "v"), // Some tags may look like `v1.2.3`
-				DownloadURL: *tag.TarballURL,
-			}
+			m.Versions[i] = strings.TrimPrefix(*tag.Name, "v")
 		}
 
 		app.moduleStore.Set(m.String(), m)
@@ -271,6 +243,18 @@ func ServiceDiscovery(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type ModuleVersionsResponse struct {
+	Modules []ModuleVersionsResponseModule `json:"modules"`
+}
+
+type ModuleVersionsResponseModule struct {
+	Versions []ModuleVersionsResponseModuleVersion `json:"versions"`
+}
+
+type ModuleVersionsResponseModuleVersion struct {
+	Version string `json:"version"`
+}
+
 // ModuleVersions returns a handler that returns a list of available versions for a module.
 // - https://www.terraform.io/internals/module-registry-protocol#list-available-versions-for-a-specific-module
 func (app *App) ModuleVersions() http.HandlerFunc {
@@ -298,11 +282,18 @@ func (app *App) ModuleVersions() http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		respObj := struct {
-			Modules []*Module `json:"modules"`
-		}{
-			Modules: []*Module{module},
+
+		respObj := ModuleVersionsResponse{
+			Modules: []ModuleVersionsResponseModule{
+				{
+					Versions: make([]ModuleVersionsResponseModuleVersion, len(module.Versions)),
+				},
+			},
 		}
+		for i, v := range module.Versions {
+			respObj.Modules[0].Versions[i].Version = v
+		}
+
 		b, err := json.Marshal(respObj)
 		if err != nil {
 			log.Printf("error: ModuleVersions: %+v", err)
@@ -335,15 +326,18 @@ func (app *App) ModuleDownload() http.HandlerFunc {
 			return
 		}
 
-		version := module.GetVersion(m[urlPat.SubexpIndex("version")])
-		if version == nil {
+		version := m[urlPat.SubexpIndex("version")]
+		if !module.HasVersion(version) {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			log.Printf("error: ModuleDownload: version '%s' not found for module '%s'.", m[urlPat.SubexpIndex("version")], module)
 			return
 		}
 
 		//w.Header().Set("X-Terraform-Get", version.DownloadURL)
-		w.Header().Set("X-Terraform-Get", "https://api.github.com/repos/hashicorp/terraform-aws-consul/tarball/v0.0.1//*?archive=tar.gz")
+		w.Header().Set(
+			"X-Terraform-Get",
+			fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", module.Namespace, module.Name, version),
+		)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
