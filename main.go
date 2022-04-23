@@ -167,20 +167,32 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 // - https://www.terraform.io/internals/login-protocol
 // - https://www.terraform.io/internals/module-registry-protocol
 func (app *App) ServiceDiscovery() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		spec := []byte(`{
-  "modules.v1": "/v1/modules/",
-  "login.v1": {
-    "client": "terraform-cli",
-    "grant_types": ["authz_code"],
-    "authz": "/oauth/authorization",
-    "token": "/oauth/token",
-    "ports": [10000, 10010]
-  }
-}`)
+	spec := struct {
+		ModulesV1 string `json:"modules.v1"`
+		LoginV1   struct {
+			Client     string   `json:"client"`
+			GrantTypes []string `json:"grant_types"`
+			Authz      string   `json:"authz"`
+			Token      string   `json:"token"`
+			Ports      []int    `json:"ports"`
+		} `json:"login.v1"`
+	}{}
 
+	spec.ModulesV1 = "/v1/modules/"
+	spec.LoginV1.Client = "terraform-cli"
+	spec.LoginV1.GrantTypes = []string{"authz_code"}
+	spec.LoginV1.Authz = "/oauth/authorization"
+	spec.LoginV1.Token = "/oauth/token"
+	spec.LoginV1.Ports = []int{10000, 10010}
+
+	resp, err := json.Marshal(spec)
+	if err != nil {
+		log.Fatalf("error: ServiceDiscovery: %v", err)
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if _, err := w.Write(spec); err != nil {
+		if _, err := w.Write(resp); err != nil {
 			log.Printf("error: ServiceDiscovery: %+v", err)
 		}
 	}
