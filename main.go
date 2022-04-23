@@ -9,7 +9,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -65,55 +64,6 @@ func (app *App) SetupRouter() {
 
 	// Work-around to trigger log handler on non-matching 404's
 	//app.router.NotFoundHandler = app.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
-}
-
-type Module struct {
-	Namespace string
-	Name      string
-	System    string
-	// Versions is a map where the key is a version string and value s the git ref
-	Versions map[string]string
-}
-
-func (m *Module) String() string {
-	return fmt.Sprintf("%s/%s/%s", m.Namespace, m.Name, m.System)
-}
-
-func (m *Module) HasVersion(version string) bool {
-	for _, v := range m.Versions {
-		if v == version {
-			return true
-		}
-	}
-	return false
-}
-
-type ModuleStore struct {
-	store map[string]Module
-	mut   sync.RWMutex
-}
-
-func NewModuleStore() *ModuleStore {
-	return &ModuleStore{
-		store: make(map[string]Module),
-	}
-}
-
-func (ms *ModuleStore) Get(key string) *Module {
-	ms.mut.RLock()
-	defer ms.mut.RUnlock()
-
-	m, ok := ms.store[key]
-	if !ok {
-		return nil
-	}
-	return &m
-}
-
-func (ms *ModuleStore) Set(key string, m Module) {
-	ms.mut.Lock()
-	defer ms.mut.Unlock()
-	ms.store[key] = m
 }
 
 type App struct {
