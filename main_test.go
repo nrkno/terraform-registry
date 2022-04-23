@@ -102,8 +102,10 @@ func TestListModuleVersions(t *testing.T) {
 	is := is.New(t)
 
 	app := App{
-		moduleStore: NewModuleStore(),
+		IsAuthDisabled: true,
+		moduleStore:    NewModuleStore(),
 	}
+	app.SetupRouter()
 
 	versions := make(map[string]string)
 	versions["1.1.1"] = "v1.1.1"
@@ -149,7 +151,7 @@ func TestListModuleVersions(t *testing.T) {
 			req := httptest.NewRequest("GET", "/v1/modules/"+tc.module+"/versions", nil)
 			w := httptest.NewRecorder()
 
-			app.ModuleVersions().ServeHTTP(w, req)
+			app.router.ServeHTTP(w, req)
 
 			resp := w.Result()
 			body, err := io.ReadAll(resp.Body)
@@ -179,8 +181,10 @@ func TestModuleDownload(t *testing.T) {
 	is := is.New(t)
 
 	app := App{
-		moduleStore: NewModuleStore(),
+		IsAuthDisabled: true,
+		moduleStore:    NewModuleStore(),
 	}
+	app.SetupRouter()
 
 	versions := make(map[string]string)
 	versions["1.1.1"] = "v1.1.1"
@@ -220,7 +224,7 @@ func TestModuleDownload(t *testing.T) {
 			req := httptest.NewRequest("GET", "/v1/modules/"+tc.moduleString+"/download", nil)
 			w := httptest.NewRecorder()
 
-			app.ModuleDownload().ServeHTTP(w, req)
+			app.router.ServeHTTP(w, req)
 
 			resp := w.Result()
 			is.Equal(resp.StatusCode, tc.status)

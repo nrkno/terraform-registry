@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -213,30 +212,20 @@ type ModuleVersionsResponseModuleVersion struct {
 // ModuleVersions returns a handler that returns a list of available versions for a module.
 // - https://www.terraform.io/internals/module-registry-protocol#list-available-versions-for-a-specific-module
 func (app *App) ModuleVersions() http.HandlerFunc {
-	urlPat := regexp.MustCompile(`(?P<namespace>[\w-]+)/(?P<name>[\w-]+)/(?P<provider>[\w-]+)/versions$`)
-
 	return func(w http.ResponseWriter, r *http.Request) {
-		m := urlPat.FindStringSubmatch(r.URL.Path)
-		if m == nil {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
-
 		var (
-			namespace = m[urlPat.SubexpIndex("namespace")]
-			name      = m[urlPat.SubexpIndex("name")]
-			provider  = m[urlPat.SubexpIndex("provider")]
-			key       = fmt.Sprintf("%s/%s/%s", namespace, name, provider)
+			namespace = chi.URLParam(r, "namespace")
+			name      = chi.URLParam(r, "name")
+			system    = chi.URLParam(r, "system")
+			moduleKey = fmt.Sprintf("%s/%s/%s", namespace, name, system)
 		)
 
-		module := app.moduleStore.Get(key)
+		module := app.moduleStore.Get(moduleKey)
 		if module == nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			log.Printf("error: ModuleVersions: module '%s' not found.", key)
+			log.Printf("error: ModuleVersions: module '%s' not found.", moduleKey)
 			return
 		}
-
-		w.Header().Set("Content-Type", "application/json")
 
 		respObj := ModuleVersionsResponse{
 			Modules: make([]ModuleVersionsResponseModule, 1),
@@ -250,7 +239,7 @@ func (app *App) ModuleVersions() http.HandlerFunc {
 			log.Printf("error: ModuleVersions: %+v", err)
 		}
 
-		//_, err = fmt.Fprintf(w, `{"modules":[{"versions":%s}]}`, b)
+		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write(b); err != nil {
 			log.Printf("error: ModuleVersions: %+v", err)
 		}
@@ -260,35 +249,32 @@ func (app *App) ModuleVersions() http.HandlerFunc {
 // ModuleDownload returns a handler that returns a download link for a specific version of a module.
 // https://www.terraform.io/internals/module-registry-protocol#download-source-code-for-a-specific-module-version
 func (app *App) ModuleDownload() http.HandlerFunc {
-	urlPat := regexp.MustCompile(`(?P<namespace>[\w-]+)/(?P<name>[\w-]+)/(?P<provider>[\w-]+)/(?P<version>[\w-.]+)/download$`)
-
 	return func(w http.ResponseWriter, r *http.Request) {
-		m := urlPat.FindStringSubmatch(r.URL.Path)
-		if m == nil {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
+		var (
+			namespace = chi.URLParam(r, "namespace")
+			name      = chi.URLParam(r, "name")
+			system    = chi.URLParam(r, "system")
+			version   = chi.URLParam(r, "version")
+			moduleKey = fmt.Sprintf("%s/%s/%s", namespace, name, system)
+		)
 
-		key := fmt.Sprintf("%s/%s/%s", m[urlPat.SubexpIndex("namespace")], m[urlPat.SubexpIndex("name")], m[urlPat.SubexpIndex("provider")])
-		module := app.moduleStore.Get(key)
+		module := app.moduleStore.Get(moduleKey)
 		if module == nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			log.Printf("error: ModuleDownload: module '%s' not found.", module)
+			log.Printf("error: ModuleDownload: module '%s' not found.", moduleKey)
 			return
 		}
 
-		version := m[urlPat.SubexpIndex("version")]
-		tag, ok := module.Versions[version]
+		gitRef, ok := module.Versions[version]
 		if !ok {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			log.Printf("error: ModuleDownload: version '%s' not found for module '%s'.", version, module)
 			return
 		}
 
-		//w.Header().Set("X-Terraform-Get", version.DownloadURL)
 		w.Header().Set(
 			"X-Terraform-Get",
-			fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", module.Namespace, module.Name, tag),
+			fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", module.Namespace, module.Name, gitRef),
 		)
 		w.WriteHeader(http.StatusNoContent)
 	}
