@@ -51,6 +51,16 @@ func main() {
 	srv.ListenAndServeTLS("/home/n645863/tmp/ssl-selfsigned/cert.crt", "/home/n645863/tmp/ssl-selfsigned/cert.key")
 }
 
+type App struct {
+	ListenAddr     string
+	IsAuthDisabled bool
+
+	router      *chi.Mux
+	authTokens  []string
+	moduleStore *ModuleStore
+	ghclient    *GitHubClient
+}
+
 func (app *App) SetupRouter() {
 	app.router = chi.NewRouter()
 	app.router.Use(middleware.Logger)
@@ -64,15 +74,6 @@ func (app *App) SetupRouter() {
 
 	// Work-around to trigger log handler on non-matching 404's
 	//app.router.NotFoundHandler = app.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
-}
-
-type App struct {
-	ListenAddr string
-	router     *chi.Mux
-
-	authTokens  []string
-	moduleStore *ModuleStore
-	ghclient    *GitHubClient
 }
 
 func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
@@ -127,6 +128,11 @@ func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
 // TokenAuth is a middleware function for token header authentication.
 func (app *App) TokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if app.IsAuthDisabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		auth := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
 		if len(auth) != 2 {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
