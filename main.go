@@ -28,7 +28,7 @@ func main() {
 		log.Fatalf("error: github credential test: %v", err)
 	}
 
-	//moduleRepos, err := app.ghclient.ListUserRepositoriesByTopic(context.Background(), "nrkno")
+	//moduleRepos, err := app.ghclient.ListUserRepositoriesByTopic(context.Background(), "nrkno", "terraform-module")
 	//if err != nil {
 	//	log.Fatalf("error: failed to get repositories: %v", err)
 	//}
@@ -58,19 +58,6 @@ type App struct {
 	authTokens  []string
 	moduleStore *ModuleStore
 	ghclient    *GitHubClient
-}
-
-func (app *App) SetupRouter() {
-	app.router = chi.NewRouter()
-	app.router.Use(middleware.Logger)
-	app.router.Use(app.TokenAuth)
-	app.router.Get("/", app.Index())
-	app.router.Get("/.well-known/terraform.json", app.ServiceDiscovery())
-	app.router.Get("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions())
-	app.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload())
-
-	// Work-around to trigger log handler on non-matching 404's
-	//app.router.NotFoundHandler = app.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
 }
 
 func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
@@ -122,6 +109,16 @@ func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
 //	}
 //}
 
+func (app *App) SetupRouter() {
+	app.router = chi.NewRouter()
+	app.router.Use(middleware.Logger)
+	app.router.Use(app.TokenAuth)
+	app.router.Get("/", app.Index())
+	app.router.Get("/.well-known/terraform.json", app.ServiceDiscovery())
+	app.router.Get("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions())
+	app.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload())
+}
+
 // TokenAuth is a middleware function for token header authentication.
 func (app *App) TokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -166,30 +163,33 @@ func (app *App) Index() http.HandlerFunc {
 	}
 }
 
-// ServiceDiscovery is a handler that returns a JSON payload for Terraform service discovery.
-//
-// Given a hostname, discovery begins by forming an initial discovery URL using
-// that hostname with the https: scheme and the fixed path /.well-known/terraform.json
-// - https://www.terraform.io/internals/login-protocol
-// - https://www.terraform.io/internals/module-registry-protocol
-func (app *App) ServiceDiscovery() http.HandlerFunc {
-	spec := struct {
-		ModulesV1 string `json:"modules.v1"`
-		LoginV1   struct {
-			Client     string   `json:"client"`
-			GrantTypes []string `json:"grant_types"`
-			Authz      string   `json:"authz"`
-			Token      string   `json:"token"`
-			Ports      []int    `json:"ports"`
-		} `json:"login.v1"`
-	}{}
+type ServiceDiscoveryResponse struct {
+	ModulesV1 string                          `json:"modules.v1"`
+	LoginV1   ServiceDiscoveryResponseLoginV1 `json:"login.v1"`
+}
 
-	spec.ModulesV1 = "/v1/modules/"
-	spec.LoginV1.Client = "terraform-cli"
-	spec.LoginV1.GrantTypes = []string{"authz_code"}
-	spec.LoginV1.Authz = "/oauth/authorization"
-	spec.LoginV1.Token = "/oauth/token"
-	spec.LoginV1.Ports = []int{10000, 10010}
+type ServiceDiscoveryResponseLoginV1 struct {
+	Client     string   `json:"client"`
+	GrantTypes []string `json:"grant_types"`
+	Authz      string   `json:"authz"`
+	Token      string   `json:"token"`
+	Ports      []int    `json:"ports"`
+}
+
+// ServiceDiscovery returns a handler that returns a JSON payload for Terraform service discovery.
+// https://www.terraform.io/internals/login-protocol
+// https://www.terraform.io/internals/module-registry-protocol
+func (app *App) ServiceDiscovery() http.HandlerFunc {
+	spec := ServiceDiscoveryResponse{
+		ModulesV1: "/v1/modules/",
+		LoginV1: ServiceDiscoveryResponseLoginV1{
+			Client:     "terraform-cli",
+			GrantTypes: []string{"authz_code"},
+			Authz:      "/oauth/authorization",
+			Token:      "/oauth/token",
+			Ports:      []int{10000, 10010},
+		},
+	}
 
 	resp, err := json.Marshal(spec)
 	if err != nil {
@@ -217,7 +217,7 @@ type ModuleVersionsResponseModuleVersion struct {
 }
 
 // ModuleVersions returns a handler that returns a list of available versions for a module.
-// - https://www.terraform.io/internals/module-registry-protocol#list-available-versions-for-a-specific-module
+// https://www.terraform.io/internals/module-registry-protocol#list-available-versions-for-a-specific-module
 func (app *App) ModuleVersions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
