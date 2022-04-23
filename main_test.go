@@ -2,14 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"sort"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/matryer/is"
 )
 
@@ -36,15 +34,11 @@ func TestTokenAuth(t *testing.T) {
 	is := is.New(t)
 
 	app := App{
-		router: mux.NewRouter(),
 		authTokens: []string{
 			"valid",
 		},
 	}
-	app.router.Use(app.TokenAuth)
-	app.router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "authenticated")
-	})
+	app.SetupRouter()
 
 	testcases := []struct {
 		name   string
@@ -68,7 +62,7 @@ func TestTokenAuth(t *testing.T) {
 			"valid token",
 			"valid",
 			http.StatusOK,
-			"authenticated",
+			"Terraform Registry\n",
 		},
 	}
 

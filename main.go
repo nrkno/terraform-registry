@@ -30,15 +30,6 @@ func main() {
 		log.Fatalf("error: github credential test: %v", err)
 	}
 
-	versions := make(map[string]string)
-	versions["2.0.0"] = "v2.0.0"
-	app.moduleStore.Set("stigok/plattform-terraform-repository-release-test/generic", Module{
-		Namespace: "stigok",
-		Name:      "plattform-terraform-repository-release-test",
-		System:    "generic",
-		Versions:  versions,
-	})
-
 	//moduleRepos, err := app.ghclient.ListUserRepositoriesByTopic(context.Background(), "nrkno")
 	//if err != nil {
 	//	log.Fatalf("error: failed to get repositories: %v", err)
@@ -63,6 +54,15 @@ func main() {
 
 func (app *App) SetupRouter() {
 	app.router = mux.NewRouter()
+
+	app.router.
+		Use(app.TokenAuth)
+
+	app.router.
+		HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Terraform Registry\n")
+		})
+
 	app.router.
 		HandleFunc("/.well-known/terraform.json", ServiceDiscovery).
 		Methods("GET")
@@ -74,9 +74,6 @@ func (app *App) SetupRouter() {
 	app.router.
 		HandleFunc("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload()).
 		Methods("GET")
-
-	//app.Router.
-	//	Use(app.TokenAuth)
 
 	// Work-around to trigger log handler on non-matching 404's
 	app.router.NotFoundHandler = app.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
