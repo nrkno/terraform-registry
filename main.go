@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
@@ -41,7 +41,7 @@ func main() {
 
 	srv := http.Server{
 		Addr:              app.ListenAddr,
-		Handler:           handlers.LoggingHandler(os.Stdout, app.router),
+		Handler:           app.router,
 		ReadTimeout:       3 * time.Second,
 		ReadHeaderTimeout: 3 * time.Second,
 		WriteTimeout:      3 * time.Second,
@@ -53,30 +53,18 @@ func main() {
 }
 
 func (app *App) SetupRouter() {
-	app.router = mux.NewRouter()
-
-	app.router.
-		Use(app.TokenAuth)
-
-	app.router.
-		HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "Terraform Registry\n")
-		})
-
-	app.router.
-		HandleFunc("/.well-known/terraform.json", ServiceDiscovery).
-		Methods("GET")
-
-	app.router.
-		HandleFunc("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions()).
-		Methods("GET")
-
-	app.router.
-		HandleFunc("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload()).
-		Methods("GET")
+	app.router = chi.NewRouter()
+	app.router.Use(middleware.Logger)
+	app.router.Use(app.TokenAuth)
+	app.router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Terraform Registry\n")
+	})
+	app.router.Get("/.well-known/terraform.json", ServiceDiscovery)
+	app.router.Get("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions())
+	app.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload())
 
 	// Work-around to trigger log handler on non-matching 404's
-	app.router.NotFoundHandler = app.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
+	//app.router.NotFoundHandler = app.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
 }
 
 type Module struct {
@@ -130,7 +118,7 @@ func (ms *ModuleStore) Set(key string, m Module) {
 
 type App struct {
 	ListenAddr string
-	router     *mux.Router
+	router     *chi.Mux
 
 	authTokens  []string
 	moduleStore *ModuleStore
