@@ -30,6 +30,15 @@ func main() {
 		log.Fatalf("error: github credential test: %v", err)
 	}
 
+	versions := make(map[string]string)
+	versions["2.0.0"] = "v2.0.0"
+	app.moduleStore.Set("stigok/plattform-terraform-repository-release-test/generic", Module{
+		Namespace: "stigok",
+		Name:      "plattform-terraform-repository-release-test",
+		System:    "generic",
+		Versions:  versions,
+	})
+
 	//moduleRepos, err := app.ghclient.ListUserRepositoriesByTopic(context.Background(), "nrkno")
 	//if err != nil {
 	//	log.Fatalf("error: failed to get repositories: %v", err)
@@ -74,24 +83,16 @@ func (app *App) SetupRouter() {
 }
 
 type Module struct {
-	Namespace string   `json:"-"`
-	Name      string   `json:"-"`
-	System    string   `json:"-"`
-	Versions  []string `json:"versions"`
+	Namespace string
+	Name      string
+	System    string
+	// Versions is a map where the key is a version string and value s the git ref
+	Versions map[string]string
 }
 
 func (m *Module) String() string {
 	return fmt.Sprintf("%s/%s/%s", m.Namespace, m.Name, m.System)
 }
-
-func (m *Module) ListVersions() []string {
-	return m.Versions
-}
-
-//type ModuleVersion struct {
-//	Version     string `json:"version"`
-//	DownloadURL string `json:"-"`
-//}
 
 func (m *Module) HasVersion(version string) bool {
 	for _, v := range m.Versions {
@@ -152,8 +153,7 @@ func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
 			repoName  = parts[1]
 		)
 
-		tctx, _ := context.WithTimeout(ctx, 5*time.Second)
-		tags, err := app.ghclient.GetRepoTags(tctx, repoOwner, repoName)
+		tags, err := app.ghclient.GetRepoTags(ctx, repoOwner, repoName)
 		if err != nil {
 			log.Printf("error: LoadGitHubRepositories: %v", err)
 			continue
@@ -168,10 +168,10 @@ func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
 			Namespace: repoOwner,
 			Name:      repoName,
 			System:    "generic", // Required by Terraform, but we don't want to segment the modules into systems (could be any string).
-			Versions:  make([]string, len(tags)),
+			Versions:  make(map[string]string, len(tags)),
 		}
-		for i, tag := range tags {
-			m.Versions[i] = strings.TrimPrefix(*tag.Name, "v")
+		for _, tag := range tags {
+			m.Versions[*tag.Name] = strings.TrimPrefix(*tag.Name, "v")
 		}
 
 		app.moduleStore.Set(m.String(), m)
@@ -284,14 +284,10 @@ func (app *App) ModuleVersions() http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 
 		respObj := ModuleVersionsResponse{
-			Modules: []ModuleVersionsResponseModule{
-				{
-					Versions: make([]ModuleVersionsResponseModuleVersion, len(module.Versions)),
-				},
-			},
+			Modules: make([]ModuleVersionsResponseModule, 1),
 		}
-		for i, v := range module.Versions {
-			respObj.Modules[0].Versions[i].Version = v
+		for v, _ := range module.Versions {
+			respObj.Modules[0].Versions = append(respObj.Modules[0].Versions, ModuleVersionsResponseModuleVersion{Version: v})
 		}
 
 		b, err := json.Marshal(respObj)
@@ -327,16 +323,17 @@ func (app *App) ModuleDownload() http.HandlerFunc {
 		}
 
 		version := m[urlPat.SubexpIndex("version")]
-		if !module.HasVersion(version) {
+		tag, ok := module.Versions[version]
+		if !ok {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			log.Printf("error: ModuleDownload: version '%s' not found for module '%s'.", m[urlPat.SubexpIndex("version")], module)
+			log.Printf("error: ModuleDownload: version '%s' not found for module '%s'.", version, module)
 			return
 		}
 
 		//w.Header().Set("X-Terraform-Get", version.DownloadURL)
 		w.Header().Set(
 			"X-Terraform-Get",
-			fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", module.Namespace, module.Name, version),
+			fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", module.Namespace, module.Name, tag),
 		)
 		w.WriteHeader(http.StatusNoContent)
 	}

@@ -1,2 +1,3 @@
 plattform-terraform-registry
 /tmp
+.terraform*

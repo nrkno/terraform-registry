@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -98,40 +99,40 @@ func TestListModuleVersions(t *testing.T) {
 		moduleStore: NewModuleStore(),
 	}
 
+	versions := make(map[string]string)
+	versions["1.1.1"] = "v1.1.1"
+	versions["2.2.2"] = "v2.2.2"
+	versions["3.3.3"] = "v3.3.3"
 	app.moduleStore.Set("hashicorp/consul/aws", Module{
 		Namespace: "hashicorp",
 		Name:      "consul",
 		System:    "aws",
-		Versions: []string{
-			"1.1.1",
-			"2.2.2",
-			"3.3.3",
-		},
+		Versions:  versions,
 	})
 
 	testcases := []struct {
-		name   string
-		module string
-		status int
-		body   string
+		name         string
+		module       string
+		status       int
+		versionsSeen []string
 	}{
 		{
 			"valid module",
 			"hashicorp/consul/aws",
 			http.StatusOK,
-			`{"modules":[{"versions":[{"version":"1.1.1"},{"version":"2.2.2"},{"version":"3.3.3"}]}]}`,
+			[]string{"1.1.1", "2.2.2", "3.3.3"},
 		},
 		{
 			"unknown module",
 			"some/random/name",
 			http.StatusNotFound,
-			"Not Found\n",
+			[]string{},
 		},
 		{
 			"empty module name",
 			"",
 			http.StatusNotFound,
-			"Not Found\n",
+			[]string{},
 		},
 	}
 
@@ -148,10 +149,21 @@ func TestListModuleVersions(t *testing.T) {
 			body, err := io.ReadAll(resp.Body)
 			is.NoErr(err)
 			is.Equal(resp.StatusCode, tc.status)
-			is.Equal(string(body), tc.body)
 
 			if tc.status == http.StatusOK {
 				is.Equal(resp.Header.Get("Content-Type"), "application/json")
+
+				var respObj ModuleVersionsResponse
+				err := json.Unmarshal(body, &respObj)
+				is.NoErr(err)
+
+				var actualVersions []string
+				for _, v := range respObj.Modules[0].Versions {
+					actualVersions = append(actualVersions, v.Version)
+				}
+				sort.Strings(actualVersions)
+
+				is.Equal(actualVersions, tc.versionsSeen)
 			}
 		})
 	}
@@ -164,15 +176,15 @@ func TestModuleDownload(t *testing.T) {
 		moduleStore: NewModuleStore(),
 	}
 
+	versions := make(map[string]string)
+	versions["1.1.1"] = "v1.1.1"
+	versions["2.2.2"] = "v2.2.2"
+	versions["3.3.3"] = "v3.3.3"
 	app.moduleStore.Set("hashicorp/consul/aws", Module{
 		Namespace: "hashicorp",
 		Name:      "consul",
 		System:    "aws",
-		Versions: []string{
-			"1.1.1",
-			"2.2.2",
-			"3.3.3",
-		},
+		Versions:  versions,
 	})
 
 	testcases := []struct {
@@ -185,7 +197,7 @@ func TestModuleDownload(t *testing.T) {
 			"valid module",
 			"hashicorp/consul/aws/2.2.2",
 			http.StatusNoContent,
-			"git::ssh://git@github.com/hashicorp/consul.git?ref=2.2.2",
+			"git::ssh://git@github.com/hashicorp/consul.git?ref=v2.2.2",
 		},
 		{
 			"unknown module",
