@@ -12,16 +12,28 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/kelseyhightower/envconfig"
 )
+
+type App struct {
+	ListenAddr     string `default:":8080"`
+	IsAuthDisabled bool   `envconfig:"AUTH_DISABLED"`
+
+	router      *chi.Mux
+	authTokens  []string
+	moduleStore *ModuleStore
+	ghclient    *GitHubClient
+}
 
 func main() {
 	log.Default().SetFlags(log.Lshortfile)
 
-	app := &App{
-		ListenAddr:  ":8080",
-		moduleStore: NewModuleStore(),
-		ghclient:    NewGitHubClient(os.Getenv("GITHUB_TOKEN")),
-	}
+	app := new(App)
+	envconfig.MustProcess("", &app)
+
+	app.moduleStore = NewModuleStore()
+	app.ghclient = NewGitHubClient(os.Getenv("GITHUB_TOKEN"))
+
 	app.SetupRoutes()
 
 	if err := app.ghclient.TestCredentials(context.Background()); err != nil {
@@ -48,16 +60,6 @@ func main() {
 
 	log.Printf("Starting HTTP server, listening on %s", app.ListenAddr)
 	srv.ListenAndServeTLS("/home/n645863/tmp/ssl-selfsigned/cert.crt", "/home/n645863/tmp/ssl-selfsigned/cert.key")
-}
-
-type App struct {
-	ListenAddr     string
-	IsAuthDisabled bool
-
-	router      *chi.Mux
-	authTokens  []string
-	moduleStore *ModuleStore
-	ghclient    *GitHubClient
 }
 
 func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
