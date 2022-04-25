@@ -22,7 +22,7 @@ func main() {
 		moduleStore: NewModuleStore(),
 		ghclient:    NewGitHubClient(os.Getenv("GITHUB_TOKEN")),
 	}
-	app.SetupRouter()
+	app.SetupRoutes()
 
 	if err := app.ghclient.TestCredentials(context.Background()); err != nil {
 		log.Fatalf("error: github credential test: %v", err)
@@ -109,7 +109,7 @@ func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
 //	}
 //}
 
-func (app *App) SetupRouter() {
+func (app *App) SetupRoutes() {
 	app.router = chi.NewRouter()
 	app.router.Use(middleware.Logger)
 	app.router.Use(app.TokenAuth)

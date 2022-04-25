@@ -21,7 +21,7 @@ func TestServiceDiscovery(t *testing.T) {
 	app := App{
 		IsAuthDisabled: true,
 	}
-	app.SetupRouter()
+	app.SetupRoutes()
 	app.router.ServeHTTP(w, req)
 
 	resp := w.Result()
@@ -50,7 +50,7 @@ func TestTokenAuth(t *testing.T) {
 			"valid",
 		},
 	}
-	app.SetupRouter()
+	app.SetupRoutes()
 
 	testcases := []struct {
 		name   string
@@ -105,7 +105,7 @@ func TestListModuleVersions(t *testing.T) {
 		IsAuthDisabled: true,
 		moduleStore:    NewModuleStore(),
 	}
-	app.SetupRouter()
+	app.SetupRoutes()
 
 	versions := make(map[string]string)
 	versions["1.1.1"] = "v1.1.1"
@@ -184,7 +184,7 @@ func TestModuleDownload(t *testing.T) {
 		IsAuthDisabled: true,
 		moduleStore:    NewModuleStore(),
 	}
-	app.SetupRouter()
+	app.SetupRoutes()
 
 	versions := make(map[string]string)
 	versions["1.1.1"] = "v1.1.1"
