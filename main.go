@@ -16,9 +16,14 @@ import (
 )
 
 type App struct {
-	ListenAddr     string `default:":8080"`
-	IsAuthDisabled bool   `envconfig:"AUTH_DISABLED"`
-	AuthTokenFile  string
+	// Registry server HTTP listen address
+	ListenAddr string `split_words:"true" default:":8080"`
+	// Whether to disable auth
+	IsAuthDisabled bool `envconfig:"AUTH_DISABLED"`
+	// File containing newline separated strings with valid auth tokens
+	AuthTokenFile string `split_words:"true"`
+	// API access token for the GitHub API
+	GitHubToken string `split_words:"true"`
 
 	router      *chi.Mux
 	authTokens  []string
@@ -33,7 +38,7 @@ func main() {
 	envconfig.MustProcess("", &app)
 
 	app.moduleStore = NewModuleStore()
-	app.ghclient = NewGitHubClient(os.Getenv("GITHUB_TOKEN"))
+	app.ghclient = NewGitHubClient(app.GitHubToken)
 
 	app.SetupRoutes()
 
@@ -41,8 +46,14 @@ func main() {
 		log.Fatalf("error: github credential test: %v", err)
 	}
 
-	if err := app.LoadAuthTokens(); err != nil {
-		log.Fatalf("error: failed to load auth tokens: %v", err)
+	if !app.IsAuthDisabled {
+		if err := app.LoadAuthTokens(); err != nil {
+			log.Fatalf("error: failed to load auth tokens: %v", err)
+		}
+		log.Println("info: authentication is enabled")
+		log.Printf("info: loaded %d auth tokens", len(app.authTokens))
+	} else {
+		log.Println("warning: authentication is disabled")
 	}
 
 	//moduleRepos, err := app.ghclient.ListUserRepositoriesByTopic(context.Background(), "nrkno", "terraform-module")
