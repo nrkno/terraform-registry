@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/go-github/v43/github"
 	"golang.org/x/oauth2"
@@ -32,9 +31,8 @@ func (c *GitHubClient) TestCredentials(ctx context.Context) error {
 	return err
 }
 
-// ListAllUserRepositories lists all repositories for the specified user/owner.
-func (c *GitHubClient) ListAllUserRepositories(ctx context.Context, user string) ([]string, error) {
-	var allRepos []string
+func (c *GitHubClient) ListAllUserRepositoriesByTopic(ctx context.Context, user string, topic string) ([][]string, error) {
+	var allRepos [][]string
 
 	opts := &github.RepositoryListOptions{}
 	opts.PerPage = 100
@@ -46,7 +44,11 @@ func (c *GitHubClient) ListAllUserRepositories(ctx context.Context, user string)
 		}
 
 		for _, r := range repos {
-			allRepos = append(allRepos, fmt.Sprintf("%s/%s", *r.Owner, *r.Name))
+			for _, t := range r.Topics {
+				if t == topic {
+					allRepos = append(allRepos, []string{(*r.Owner).String(), *r.Name})
+				}
+			}
 		}
 
 		if resp.NextPage == 0 {

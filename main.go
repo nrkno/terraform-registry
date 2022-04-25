@@ -24,6 +24,10 @@ type App struct {
 	AuthTokenFile string `split_words:"true"`
 	// API access token for the GitHub API
 	GitHubToken string `split_words:"true"`
+	// The GitHub org name to use for module discovery
+	GitHubOrgName string `split_words:"true"`
+	// The GitHub repository topic to match. Will only expose repositories whose topics contain this.
+	GitHubRepoMatchTopic string `split_words:"true" default:"terraform-module"`
 
 	router      *chi.Mux
 	authTokens  []string
@@ -56,14 +60,9 @@ func main() {
 		log.Println("warning: authentication is disabled")
 	}
 
-	//moduleRepos, err := app.ghclient.ListUserRepositoriesByTopic(context.Background(), "nrkno", "terraform-module")
-	//if err != nil {
-	//	log.Fatalf("error: failed to get repositories: %v", err)
-	//}
-
-	//app.LoadGitHubRepositories(context.Background(), []string{
-	//	"stigok/plattform-terraform-repository-release-test",
-	//})
+	if err := app.LoadTerraformModuleIndex(context.Background()); err != nil {
+		log.Fatalf("error: failed to load terraform modules: %v", err)
+	}
 
 	srv := http.Server{
 		Addr:              app.ListenAddr,
@@ -93,33 +92,27 @@ func (app *App) LoadAuthTokens() error {
 	return nil
 }
 
-func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
-	for _, repoRef := range repos {
-		parts := strings.SplitN(repoRef, "/", 2)
-		if len(parts) != 2 {
-			log.Printf("error: LoadGitHubRepositories: invalid repo reference '%s'. should be in the form 'owner/repo'.", repos)
-			continue
-		}
+func (app *App) LoadTerraformModuleIndex(ctx context.Context) error {
+	repos, err := app.ghclient.ListAllUserRepositoriesByTopic(ctx, app.GitHubOrgName, app.GitHubRepoMatchTopic)
+	if err != nil {
+		return fmt.Errorf("LoadTerraformModuleIndex: %w", err)
+	}
 
-		var (
-			repoOwner = parts[0]
-			repoName  = parts[1]
-		)
-
-		tags, err := app.ghclient.ListAllRepoTags(ctx, repoOwner, repoName)
+	for _, repo := range repos {
+		tags, err := app.ghclient.ListAllRepoTags(ctx, repo[0], repo[1])
 		if err != nil {
-			log.Printf("error: LoadGitHubRepositories: %v", err)
+			log.Printf("error: LoadTerraformModuleIndex: %v", err)
 			continue
 		}
 
 		if len(tags) == 0 {
-			log.Printf("debug: LoadGitHubRepositories: no tags for repo %s/%s found.", repoOwner, repoName)
+			log.Printf("debug: LoadTerraformModuleIndex: no tags for repo %s/%s found.", repo[0], repo[1])
 			continue
 		}
 
 		m := Module{
-			Namespace: repoOwner,
-			Name:      repoName,
+			Namespace: repo[0],
+			Name:      repo[1],
 			System:    "generic", // Required by Terraform, but we don't want to segment the modules into systems (could be any string).
 			Versions:  make(map[string]string, len(tags)),
 		}
@@ -129,18 +122,9 @@ func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
 
 		app.moduleStore.Set(m.String(), m)
 	}
-}
 
-//func (app *App) LoadAuthTokenFile(filepath string) {
-//	b, err := os.ReadFile(filepath)
-//	if err != nil {
-//		log.Panicf("LoadAuthTokenFile: %+v", err)
-//	}
-//
-//	if err := json.Unmarshal(b, &app.authTokens); err != nil {
-//		log.Panicf("LoadAuthTokenFile: %+v", err)
-//	}
-//}
+	return nil
+}
 
 func (app *App) SetupRoutes() {
 	app.router = chi.NewRouter()
