@@ -95,7 +95,7 @@ func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
 			repoName  = parts[1]
 		)
 
-		tags, err := app.ghclient.GetRepoTags(ctx, repoOwner, repoName)
+		tags, err := app.ghclient.ListAllRepoTags(ctx, repoOwner, repoName)
 		if err != nil {
 			log.Printf("error: LoadGitHubRepositories: %v", err)
 			continue
