@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sort"
 	"testing"
 
@@ -40,6 +42,28 @@ func TestServiceDiscovery(t *testing.T) {
 		`{"modules.v1":"/v1/modules/","login.v1":{"client":"terraform-cli","grant_types":["authz_code"],"authz":"/oauth/authorization","token":"/oauth/token","ports":[10000,10010]}}`,
 	)
 
+}
+
+func TestLoadAuthTokens(t *testing.T) {
+	is := is.New(t)
+
+	f, err := os.CreateTemp("", "")
+	is.NoErr(err)
+
+	fmt.Fprintf(f, "foo\nbar\n\n\n\nbaz\n")
+	f.Seek(0, io.SeekStart)
+
+	app := App{
+		AuthTokenFile: f.Name(),
+	}
+
+	err = app.LoadAuthTokens()
+	is.NoErr(err)
+
+	is.Equal(len(app.authTokens), 3)
+	is.Equal(app.authTokens[0], "foo")
+	is.Equal(app.authTokens[1], "bar")
+	is.Equal(app.authTokens[2], "baz")
 }
 
 func TestTokenAuth(t *testing.T) {

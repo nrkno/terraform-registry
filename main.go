@@ -18,6 +18,7 @@ import (
 type App struct {
 	ListenAddr     string `default:":8080"`
 	IsAuthDisabled bool   `envconfig:"AUTH_DISABLED"`
+	AuthTokenFile  string
 
 	router      *chi.Mux
 	authTokens  []string
@@ -40,6 +41,10 @@ func main() {
 		log.Fatalf("error: github credential test: %v", err)
 	}
 
+	if err := app.LoadAuthTokens(); err != nil {
+		log.Fatalf("error: failed to load auth tokens: %v", err)
+	}
+
 	//moduleRepos, err := app.ghclient.ListUserRepositoriesByTopic(context.Background(), "nrkno", "terraform-module")
 	//if err != nil {
 	//	log.Fatalf("error: failed to get repositories: %v", err)
@@ -60,6 +65,21 @@ func main() {
 
 	log.Printf("Starting HTTP server, listening on %s", app.ListenAddr)
 	srv.ListenAndServeTLS("/home/n645863/tmp/ssl-selfsigned/cert.crt", "/home/n645863/tmp/ssl-selfsigned/cert.key")
+}
+
+func (app *App) LoadAuthTokens() error {
+	b, err := os.ReadFile(app.AuthTokenFile)
+	if err != nil {
+		return fmt.Errorf("LoadModules: %w", err)
+	}
+
+	tokens := strings.Split(string(b), "\n")
+	for _, token := range tokens {
+		if token = strings.TrimSpace(token); token != "" {
+			app.authTokens = append(app.authTokens, token)
+		}
+	}
+	return nil
 }
 
 func (app *App) LoadGitHubRepositories(ctx context.Context, repos []string) {
