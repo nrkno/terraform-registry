@@ -37,7 +37,6 @@ func (c *GitHubStore) ListModuleVersions(ctx context.Context, namespace, name, p
 	for _, t := range tags {
 		vers = append(vers, &core.ModuleVersion{
 			Version:   strings.TrimPrefix(t.GetName(), "v"),
-			GitRef:    t.GetName(),
 			SourceURL: fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", namespace, name, t.GetName()),
 		})
 	}

@@ -13,7 +13,6 @@ func TestGet(t *testing.T) {
 
 	v := &core.ModuleVersion{
 		Version: "1",
-		GitRef:  "v1",
 	}
 	s := NewMemoryStore()
 	s.store["foo"] = []*core.ModuleVersion{v}
@@ -28,7 +27,6 @@ func TestSet(t *testing.T) {
 
 	v := &core.ModuleVersion{
 		Version: "1",
-		GitRef:  "v1",
 	}
 	s := NewMemoryStore()
 	s.Set("foo", []*core.ModuleVersion{v})
