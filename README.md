@@ -5,16 +5,36 @@ An implementation of a private Terraform registry.
 **NOTE:** the APIs of this app is not currently considered stable and may
 change without notice before hitting v1.0.
 
-Currently supported Terraform protocols:
+**NOTE:** please question and report issues you might have with this implementation.
+There is surely a lot of room for improvement.
+
+## Features
+
+Supported Terraform protocols:
 - [ ] login.v1
 - [x] modules.v1
 - [ ] providers.v1
 
-Currently supported backends:
+Supported backends:
 - `MemoryStore`: in-memory store that can be populated manually
+  - Must be populated manually
 - `GitHubStore`: queries the GitHub API for modules, version tags and SSH download URLs
+  - A query for module `namespace/name/provider` will return repository `namespace/name`
+  - `provider` part of module URLs is not implemented. Can be set to anything at all.
+  - Works for a single specified org/user
+  - No verification for the repo actually being a Terraform repo
 
 ## Running
+
+Environment variables:
+- `LISTEN_ADDR` HTTP(S) listen address (default: `:8080`)
+- `AUTH_DISABLED` disable authentication (default: `false`)
+- `AUTH_TOKEN_FILE` filename with newline-separated strings of valid tokens
+- `GITHUB_TOKEN` auth token for the GitHub API
+- `GITHUB_ORG_NAME` name of org or user to search for repositories in
+- `TLS_ENABLED` enable TLS (default: `false`)
+- `TLS_CERT_FILE` path to a TLS certificate
+- `TLS_KEY_FILE` path to a TLS key file
 
 Build and run
 

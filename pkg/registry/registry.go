@@ -26,9 +26,9 @@ type App struct {
 	// File containing newline separated strings with valid auth tokens
 	AuthTokenFile string `split_words:"true"`
 	// API access token for the GitHub API
-	GitHubToken string `split_words:"true" required:"true"`
+	GitHubToken string `envconfig:"GITHUB_TOKEN" required:"true"`
 	// The GitHub org name to use for module discovery
-	GitHubOrgName string `split_words:"true" required:"true"`
+	GitHubOrgName string `envconfig:"GITHUB_ORG_NAME" required:"true"`
 	// The GitHub repository topic to match. Will only expose repositories whose topics contain this.
 	//GitHubRepoMatchTopic string `split_words:"true" default:"terraform-module" required:"true"`
 	// Whether to enable TLS termination. This requires TLSCertFile and TLSKeyFile.
