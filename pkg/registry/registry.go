@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	// WelcomeMessage is the message returned from the index route.
 	WelcomeMessage = []byte("Terraform Registry\nhttps://github.com/nrkno/terraform-registry\n")
 )
 
@@ -29,7 +30,7 @@ type App struct {
 	// The GitHub org name to use for module discovery
 	GitHubOrgName string `split_words:"true" required:"true"`
 	// The GitHub repository topic to match. Will only expose repositories whose topics contain this.
-	GitHubRepoMatchTopic string `split_words:"true" default:"terraform-module" required:"true"`
+	//GitHubRepoMatchTopic string `split_words:"true" default:"terraform-module" required:"true"`
 	// Whether to enable TLS termination. This requires TLSCertFile and TLSKeyFile.
 	TLSEnabled  bool   `split_words:"true"`
 	TLSCertFile string `split_words:"true"`
@@ -40,18 +41,22 @@ type App struct {
 	moduleStore core.ModuleStore
 }
 
+// SetModuleStore sets the active module store for this instance.
 func (app *App) SetModuleStore(s core.ModuleStore) {
 	app.moduleStore = s
 }
 
+// GetAuthTokens gets the valid auth tokens configured for this instance.
 func (app *App) GetAuthTokens() []string {
 	return app.authTokens
 }
 
+// SetAuthTokens sets the valid auth tokens configured for this instance.
 func (app *App) SetAuthTokens(authTokens []string) {
 	app.authTokens = authTokens
 }
 
+// LoadAuthTokens loads valid auth tokens from the configured `app.AuthTokenFile`.
 func (app *App) LoadAuthTokens() error {
 	if app.AuthTokenFile == "" {
 		return fmt.Errorf("LoadModules: AuthTokenFile is not specified")
@@ -71,6 +76,7 @@ func (app *App) LoadAuthTokens() error {
 	return nil
 }
 
+// Initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
 func (app *App) SetupRoutes() {
 	app.router = chi.NewRouter()
 	app.router.Use(middleware.Logger)
