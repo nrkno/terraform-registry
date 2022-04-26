@@ -19,7 +19,7 @@ Currently supported backends:
 Build and run
 
 ```
-$ go build .
+$ go build ./cmd/terraform-registry/
 $ ./terraform-registry
 ```
 
