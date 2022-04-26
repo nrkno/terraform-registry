@@ -1,4 +1,4 @@
-package main
+package registry
 
 import (
 	"bytes"
@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
-	"github.com/nrkno/terraform-registry/store"
-	memstore "github.com/nrkno/terraform-registry/store/memory"
+	"github.com/nrkno/terraform-registry/pkg/store"
+	memstore "github.com/nrkno/terraform-registry/pkg/store/memory"
 )
 
 func TestServiceDiscovery(t *testing.T) {

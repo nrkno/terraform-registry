@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/nrkno/terraform-registry/store"
+	"github.com/nrkno/terraform-registry/pkg/store"
 )
 
 type MemoryStore struct {

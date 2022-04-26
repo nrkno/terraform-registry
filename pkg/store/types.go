@@ -4,7 +4,7 @@ import "context"
 
 type ModuleVersion struct {
 	Version   string
-	GitRef    string
+	GitRef    string // TODO: remove this?
 	SourceURL string
 }
 

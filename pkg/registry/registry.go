@@ -1,4 +1,4 @@
-package main
+package registry
 
 import (
 	"encoding/json"
@@ -7,13 +7,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/kelseyhightower/envconfig"
-	"github.com/nrkno/terraform-registry/store"
-	githubstore "github.com/nrkno/terraform-registry/store/github"
+	"github.com/nrkno/terraform-registry/pkg/store"
 )
 
 var (
@@ -43,40 +40,16 @@ type App struct {
 	moduleStore store.ModuleStore
 }
 
-func main() {
-	log.Default().SetFlags(log.Lshortfile)
+func (app *App) SetModuleStore(s store.ModuleStore) {
+	app.moduleStore = s
+}
 
-	app := new(App)
-	envconfig.MustProcess("", app)
-	app.moduleStore = githubstore.NewGitHubStore(app.GitHubOrgName, app.GitHubToken)
-	app.SetupRoutes()
+func (app *App) GetAuthTokens() []string {
+	return app.authTokens
+}
 
-	if !app.IsAuthDisabled {
-		if err := app.LoadAuthTokens(); err != nil {
-			log.Fatalf("error: failed to load auth tokens: %v", err)
-		}
-		log.Println("info: authentication is enabled")
-		log.Printf("info: loaded %d auth tokens", len(app.authTokens))
-	} else {
-		log.Println("warning: authentication is disabled")
-	}
-
-	srv := http.Server{
-		Addr:              app.ListenAddr,
-		Handler:           app.router,
-		ReadTimeout:       3 * time.Second,
-		ReadHeaderTimeout: 3 * time.Second,
-		WriteTimeout:      3 * time.Second,
-		IdleTimeout:       60 * time.Second, // keep-alive timeout
-	}
-
-	if app.TLSEnabled {
-		log.Printf("Starting HTTP server (TLS enabled), listening on %s", app.ListenAddr)
-		srv.ListenAndServeTLS(app.TLSCertFile, app.TLSKeyFile)
-	} else {
-		log.Printf("Starting HTTP server (TLS disabled), listening on %s", app.ListenAddr)
-		srv.ListenAndServe()
-	}
+func (app *App) SetAuthTokens(authTokens []string) {
+	app.authTokens = authTokens
 }
 
 func (app *App) LoadAuthTokens() error {
@@ -103,9 +76,14 @@ func (app *App) SetupRoutes() {
 	app.router.Use(middleware.Logger)
 	app.router.Use(app.TokenAuth)
 	app.router.Get("/", app.Index())
+	app.router.Get("/health", app.Health())
 	app.router.Get("/.well-known/terraform.json", app.ServiceDiscovery())
 	app.router.Get("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions())
 	app.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload())
+}
+
+func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	app.router.ServeHTTP(w, r)
 }
 
 // TokenAuth is a middleware function for token header authentication.
@@ -147,6 +125,15 @@ func (app *App) Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(WelcomeMessage); err != nil {
 			log.Printf("error: Index: %v", err)
+		}
+	}
+}
+
+func (app *App) Health() http.HandlerFunc {
+	resp := []byte("OK")
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write(resp); err != nil {
+			log.Printf("error: Health: %v", err)
 		}
 	}
 }

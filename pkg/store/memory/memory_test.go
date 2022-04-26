@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
-	"github.com/nrkno/terraform-registry/store"
+	"github.com/nrkno/terraform-registry/pkg/store"
 )
 
 func TestGet(t *testing.T) {
