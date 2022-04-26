@@ -33,6 +33,10 @@ type App struct {
 	GitHubOrgName string `split_words:"true" required:"true"`
 	// The GitHub repository topic to match. Will only expose repositories whose topics contain this.
 	GitHubRepoMatchTopic string `split_words:"true" default:"terraform-module" required:"true"`
+	// Whether to enable TLS termination. This requires TLSCertFile and TLSKeyFile.
+	TLSEnabled  bool   `split_words:"true"`
+	TLSCertFile string `split_words:"true"`
+	TLSKeyFile  string `split_words:"true"`
 
 	router      *chi.Mux
 	authTokens  []string
@@ -66,8 +70,13 @@ func main() {
 		IdleTimeout:       60 * time.Second, // keep-alive timeout
 	}
 
-	log.Printf("Starting HTTP server, listening on %s", app.ListenAddr)
-	srv.ListenAndServeTLS("/home/n645863/tmp/ssl-selfsigned/cert.crt", "/home/n645863/tmp/ssl-selfsigned/cert.key")
+	if app.TLSEnabled {
+		log.Printf("Starting HTTP server (TLS enabled), listening on %s", app.ListenAddr)
+		srv.ListenAndServeTLS(app.TLSCertFile, app.TLSKeyFile)
+	} else {
+		log.Printf("Starting HTTP server (TLS disabled), listening on %s", app.ListenAddr)
+		srv.ListenAndServe()
+	}
 }
 
 func (app *App) LoadAuthTokens() error {
