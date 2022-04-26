@@ -100,7 +100,7 @@ func TestTokenAuth(t *testing.T) {
 			"valid token",
 			"valid",
 			http.StatusOK,
-			"Terraform Registry\n",
+			string(WelcomeMessage),
 		},
 	}
 

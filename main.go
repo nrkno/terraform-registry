@@ -16,6 +16,10 @@ import (
 	githubstore "github.com/nrkno/terraform-registry/store/github"
 )
 
+var (
+	WelcomeMessage = []byte("Terraform Registry\nhttps://github.com/nrkno/terraform-registry\n")
+)
+
 type App struct {
 	// Registry server HTTP listen address
 	ListenAddr string `split_words:"true" default:":8080" required:"true"`
@@ -131,9 +135,8 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 }
 
 func (app *App) Index() http.HandlerFunc {
-	resp := []byte("Terraform Registry\n")
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write(resp); err != nil {
+		if _, err := w.Write(WelcomeMessage); err != nil {
 			log.Printf("error: Index: %v", err)
 		}
 	}
