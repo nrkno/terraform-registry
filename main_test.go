@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
+	"github.com/nrkno/terraform-registry/store"
+	memstore "github.com/nrkno/terraform-registry/store/memory"
 )
 
 func TestServiceDiscovery(t *testing.T) {
@@ -125,22 +127,24 @@ func TestTokenAuth(t *testing.T) {
 func TestListModuleVersions(t *testing.T) {
 	is := is.New(t)
 
+	mstore := memstore.NewMemoryStore()
+	mstore.Set("hashicorp/consul/aws", []*store.ModuleVersion{
+		&store.ModuleVersion{
+			Version: "1.1.1",
+		},
+		&store.ModuleVersion{
+			Version: "2.2.2",
+		},
+		&store.ModuleVersion{
+			Version: "3.3.3",
+		},
+	})
+
 	app := App{
 		IsAuthDisabled: true,
-		moduleStore:    NewModuleStore(),
+		moduleStore:    mstore,
 	}
 	app.SetupRoutes()
-
-	versions := make(map[string]string)
-	versions["1.1.1"] = "v1.1.1"
-	versions["2.2.2"] = "v2.2.2"
-	versions["3.3.3"] = "v3.3.3"
-	app.moduleStore.Set("hashicorp/consul/aws", Module{
-		Namespace: "hashicorp",
-		Name:      "consul",
-		System:    "aws",
-		Versions:  versions,
-	})
 
 	testcases := []struct {
 		name         string
@@ -204,22 +208,27 @@ func TestListModuleVersions(t *testing.T) {
 func TestModuleDownload(t *testing.T) {
 	is := is.New(t)
 
+	mstore := memstore.NewMemoryStore()
+	mstore.Set("hashicorp/consul/aws", []*store.ModuleVersion{
+		&store.ModuleVersion{
+			Version:   "1.1.1",
+			SourceURL: "git::ssh://git@github.com/hashicorp/consul.git?ref=v1.1.1",
+		},
+		&store.ModuleVersion{
+			Version:   "2.2.2",
+			SourceURL: "git::ssh://git@github.com/hashicorp/consul.git?ref=v2.2.2",
+		},
+		&store.ModuleVersion{
+			Version:   "3.3.3",
+			SourceURL: "git::ssh://git@github.com/hashicorp/consul.git?ref=v3.3.3",
+		},
+	})
+
 	app := App{
 		IsAuthDisabled: true,
-		moduleStore:    NewModuleStore(),
+		moduleStore:    mstore,
 	}
 	app.SetupRoutes()
-
-	versions := make(map[string]string)
-	versions["1.1.1"] = "v1.1.1"
-	versions["2.2.2"] = "v2.2.2"
-	versions["3.3.3"] = "v3.3.3"
-	app.moduleStore.Set("hashicorp/consul/aws", Module{
-		Namespace: "hashicorp",
-		Name:      "consul",
-		System:    "aws",
-		Versions:  versions,
-	})
 
 	testcases := []struct {
 		name         string

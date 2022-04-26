@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/nrkno/terraform-registry/store"
+	githubstore "github.com/nrkno/terraform-registry/store/github"
 )
 
 type App struct {
@@ -31,8 +32,7 @@ type App struct {
 
 	router      *chi.Mux
 	authTokens  []string
-	moduleStore *ModuleStore
-	ghclient    *GitHubClient
+	moduleStore store.ModuleStore
 }
 
 func main() {
@@ -40,15 +40,8 @@ func main() {
 
 	app := new(App)
 	envconfig.MustProcess("", app)
-
-	app.moduleStore = NewModuleStore()
-	app.ghclient = NewGitHubClient(app.GitHubToken)
-
+	app.moduleStore = githubstore.NewGitHubStore(app.GitHubOrgName, app.GitHubToken)
 	app.SetupRoutes()
-
-	if err := app.ghclient.TestCredentials(context.Background()); err != nil {
-		log.Fatalf("error: github credential test: %v", err)
-	}
 
 	if !app.IsAuthDisabled {
 		if err := app.LoadAuthTokens(); err != nil {
@@ -60,17 +53,13 @@ func main() {
 		log.Println("warning: authentication is disabled")
 	}
 
-	if err := app.LoadTerraformModuleIndex(context.Background()); err != nil {
-		log.Fatalf("error: failed to load terraform modules: %v", err)
-	}
-
 	srv := http.Server{
 		Addr:              app.ListenAddr,
 		Handler:           app.router,
 		ReadTimeout:       3 * time.Second,
 		ReadHeaderTimeout: 3 * time.Second,
 		WriteTimeout:      3 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		IdleTimeout:       60 * time.Second, // keep-alive timeout
 	}
 
 	log.Printf("Starting HTTP server, listening on %s", app.ListenAddr)
@@ -93,40 +82,6 @@ func (app *App) LoadAuthTokens() error {
 			app.authTokens = append(app.authTokens, token)
 		}
 	}
-	return nil
-}
-
-func (app *App) LoadTerraformModuleIndex(ctx context.Context) error {
-	repos, err := app.ghclient.ListAllUserRepositoriesByTopic(ctx, app.GitHubOrgName, app.GitHubRepoMatchTopic)
-	if err != nil {
-		return fmt.Errorf("LoadTerraformModuleIndex: %w", err)
-	}
-
-	for _, repo := range repos {
-		tags, err := app.ghclient.ListAllRepoTags(ctx, repo[0], repo[1])
-		if err != nil {
-			log.Printf("error: LoadTerraformModuleIndex: %v", err)
-			continue
-		}
-
-		if len(tags) == 0 {
-			log.Printf("debug: LoadTerraformModuleIndex: no tags for repo %s/%s found.", repo[0], repo[1])
-			continue
-		}
-
-		m := Module{
-			Namespace: repo[0],
-			Name:      repo[1],
-			System:    "generic", // Required by Terraform, but we don't want to segment the modules into systems (could be any string).
-			Versions:  make(map[string]string, len(tags)),
-		}
-		for _, tag := range tags {
-			m.Versions[*tag.Name] = strings.TrimPrefix(*tag.Name, "v")
-		}
-
-		app.moduleStore.Set(m.String(), m)
-	}
-
 	return nil
 }
 
@@ -245,21 +200,22 @@ func (app *App) ModuleVersions() http.HandlerFunc {
 			namespace = chi.URLParam(r, "namespace")
 			name      = chi.URLParam(r, "name")
 			system    = chi.URLParam(r, "system")
-			moduleKey = fmt.Sprintf("%s/%s/%s", namespace, name, system)
 		)
 
-		module := app.moduleStore.Get(moduleKey)
-		if module == nil {
+		versions, err := app.moduleStore.ListModuleVersions(r.Context(), namespace, name, system)
+		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			log.Printf("error: ModuleVersions: module '%s' not found.", moduleKey)
+			log.Printf("error: ModuleVersions: %v", err)
 			return
 		}
 
 		respObj := ModuleVersionsResponse{
-			Modules: make([]ModuleVersionsResponseModule, 1),
+			Modules: []ModuleVersionsResponseModule{
+				ModuleVersionsResponseModule{},
+			},
 		}
-		for v, _ := range module.Versions {
-			respObj.Modules[0].Versions = append(respObj.Modules[0].Versions, ModuleVersionsResponseModuleVersion{Version: v})
+		for _, v := range versions {
+			respObj.Modules[0].Versions = append(respObj.Modules[0].Versions, ModuleVersionsResponseModuleVersion{Version: v.Version})
 		}
 
 		b, err := json.Marshal(respObj)
@@ -283,27 +239,16 @@ func (app *App) ModuleDownload() http.HandlerFunc {
 			name      = chi.URLParam(r, "name")
 			system    = chi.URLParam(r, "system")
 			version   = chi.URLParam(r, "version")
-			moduleKey = fmt.Sprintf("%s/%s/%s", namespace, name, system)
 		)
 
-		module := app.moduleStore.Get(moduleKey)
-		if module == nil {
+		ver, err := app.moduleStore.GetModuleVersion(r.Context(), namespace, name, system, version)
+		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			log.Printf("error: ModuleDownload: module '%s' not found.", moduleKey)
+			log.Printf("error: ModuleDownload: %v", err)
 			return
 		}
 
-		gitRef, ok := module.Versions[version]
-		if !ok {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			log.Printf("error: ModuleDownload: version '%s' not found for module '%s'.", version, module)
-			return
-		}
-
-		w.Header().Set(
-			"X-Terraform-Get",
-			fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", module.Namespace, module.Name, gitRef),
-		)
+		w.Header().Set("X-Terraform-Get", ver.SourceURL)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

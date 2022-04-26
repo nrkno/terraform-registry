@@ -1,4 +1,4 @@
-module github.com/nrk/plattform-terraform-registry
+module github.com/nrkno/terraform-registry
 
 go 1.17
 
