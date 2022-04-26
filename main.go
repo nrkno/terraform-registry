@@ -17,17 +17,17 @@ import (
 
 type App struct {
 	// Registry server HTTP listen address
-	ListenAddr string `split_words:"true" default:":8080"`
+	ListenAddr string `split_words:"true" default:":8080" required:"true"`
 	// Whether to disable auth
 	IsAuthDisabled bool `envconfig:"AUTH_DISABLED"`
 	// File containing newline separated strings with valid auth tokens
 	AuthTokenFile string `split_words:"true"`
 	// API access token for the GitHub API
-	GitHubToken string `split_words:"true"`
+	GitHubToken string `split_words:"true" required:"true"`
 	// The GitHub org name to use for module discovery
-	GitHubOrgName string `split_words:"true"`
+	GitHubOrgName string `split_words:"true" required:"true"`
 	// The GitHub repository topic to match. Will only expose repositories whose topics contain this.
-	GitHubRepoMatchTopic string `split_words:"true" default:"terraform-module"`
+	GitHubRepoMatchTopic string `split_words:"true" default:"terraform-module" required:"true"`
 
 	router      *chi.Mux
 	authTokens  []string
@@ -39,7 +39,7 @@ func main() {
 	log.Default().SetFlags(log.Lshortfile)
 
 	app := new(App)
-	envconfig.MustProcess("", &app)
+	envconfig.MustProcess("", app)
 
 	app.moduleStore = NewModuleStore()
 	app.ghclient = NewGitHubClient(app.GitHubToken)
