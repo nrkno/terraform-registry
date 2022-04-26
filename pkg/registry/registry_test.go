@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
-	"github.com/nrkno/terraform-registry/pkg/store"
+	"github.com/nrkno/terraform-registry/pkg/core"
 	memstore "github.com/nrkno/terraform-registry/pkg/store/memory"
 )
 
@@ -128,14 +128,14 @@ func TestListModuleVersions(t *testing.T) {
 	is := is.New(t)
 
 	mstore := memstore.NewMemoryStore()
-	mstore.Set("hashicorp/consul/aws", []*store.ModuleVersion{
-		&store.ModuleVersion{
+	mstore.Set("hashicorp/consul/aws", []*core.ModuleVersion{
+		&core.ModuleVersion{
 			Version: "1.1.1",
 		},
-		&store.ModuleVersion{
+		&core.ModuleVersion{
 			Version: "2.2.2",
 		},
-		&store.ModuleVersion{
+		&core.ModuleVersion{
 			Version: "3.3.3",
 		},
 	})
@@ -209,16 +209,16 @@ func TestModuleDownload(t *testing.T) {
 	is := is.New(t)
 
 	mstore := memstore.NewMemoryStore()
-	mstore.Set("hashicorp/consul/aws", []*store.ModuleVersion{
-		&store.ModuleVersion{
+	mstore.Set("hashicorp/consul/aws", []*core.ModuleVersion{
+		&core.ModuleVersion{
 			Version:   "1.1.1",
 			SourceURL: "git::ssh://git@github.com/hashicorp/consul.git?ref=v1.1.1",
 		},
-		&store.ModuleVersion{
+		&core.ModuleVersion{
 			Version:   "2.2.2",
 			SourceURL: "git::ssh://git@github.com/hashicorp/consul.git?ref=v2.2.2",
 		},
-		&store.ModuleVersion{
+		&core.ModuleVersion{
 			Version:   "3.3.3",
 			SourceURL: "git::ssh://git@github.com/hashicorp/consul.git?ref=v3.3.3",
 		},

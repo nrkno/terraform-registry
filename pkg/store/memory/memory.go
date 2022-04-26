@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/nrkno/terraform-registry/pkg/store"
+	"github.com/nrkno/terraform-registry/pkg/core"
 )
 
 type MemoryStore struct {
-	store map[string][]*store.ModuleVersion
+	store map[string][]*core.ModuleVersion
 	mut   sync.RWMutex
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		store: make(map[string][]*store.ModuleVersion),
+		store: make(map[string][]*core.ModuleVersion),
 	}
 }
 
-func (s *MemoryStore) Get(key string) []*store.ModuleVersion {
+func (s *MemoryStore) Get(key string) []*core.ModuleVersion {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
 
@@ -30,13 +30,13 @@ func (s *MemoryStore) Get(key string) []*store.ModuleVersion {
 	return m
 }
 
-func (s *MemoryStore) Set(key string, m []*store.ModuleVersion) {
+func (s *MemoryStore) Set(key string, m []*core.ModuleVersion) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	s.store[key] = m
 }
 
-func (s *MemoryStore) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*store.ModuleVersion, error) {
+func (s *MemoryStore) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*core.ModuleVersion, error) {
 	key := fmt.Sprintf("%s/%s/%s", namespace, name, provider)
 	versions := s.Get(key)
 	if versions == nil {
@@ -46,7 +46,7 @@ func (s *MemoryStore) ListModuleVersions(ctx context.Context, namespace, name, p
 	return versions, nil
 }
 
-func (s *MemoryStore) GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*store.ModuleVersion, error) {
+func (s *MemoryStore) GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*core.ModuleVersion, error) {
 	key := fmt.Sprintf("%s/%s/%s", namespace, name, provider)
 	versions := s.Get(key)
 	if versions == nil {

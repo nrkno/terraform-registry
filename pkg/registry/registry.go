@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/nrkno/terraform-registry/pkg/store"
+	"github.com/nrkno/terraform-registry/pkg/core"
 )
 
 var (
@@ -37,10 +37,10 @@ type App struct {
 
 	router      *chi.Mux
 	authTokens  []string
-	moduleStore store.ModuleStore
+	moduleStore core.ModuleStore
 }
 
-func (app *App) SetModuleStore(s store.ModuleStore) {
+func (app *App) SetModuleStore(s core.ModuleStore) {
 	app.moduleStore = s
 }
 

@@ -5,18 +5,18 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
-	"github.com/nrkno/terraform-registry/pkg/store"
+	"github.com/nrkno/terraform-registry/pkg/core"
 )
 
 func TestGet(t *testing.T) {
 	is := is.New(t)
 
-	v := &store.ModuleVersion{
+	v := &core.ModuleVersion{
 		Version: "1",
 		GitRef:  "v1",
 	}
 	s := NewMemoryStore()
-	s.store["foo"] = []*store.ModuleVersion{v}
+	s.store["foo"] = []*core.ModuleVersion{v}
 
 	res := s.Get("foo")
 	is.Equal(len(res), 1)
@@ -26,12 +26,12 @@ func TestGet(t *testing.T) {
 func TestSet(t *testing.T) {
 	is := is.New(t)
 
-	v := &store.ModuleVersion{
+	v := &core.ModuleVersion{
 		Version: "1",
 		GitRef:  "v1",
 	}
 	s := NewMemoryStore()
-	s.Set("foo", []*store.ModuleVersion{v})
+	s.Set("foo", []*core.ModuleVersion{v})
 
 	res := s.Get("foo")
 	is.Equal(len(res), 1)
@@ -42,7 +42,7 @@ func TestListModuleVersions(t *testing.T) {
 	is := is.New(t)
 
 	s := NewMemoryStore()
-	s.Set("foo/bar/baz", []*store.ModuleVersion{
+	s.Set("foo/bar/baz", []*core.ModuleVersion{
 		{Version: "1"},
 		{Version: "2"},
 		{Version: "3"},
@@ -68,7 +68,7 @@ func TestGetModuleVersion(t *testing.T) {
 	is := is.New(t)
 
 	s := NewMemoryStore()
-	s.Set("foo/bar/baz", []*store.ModuleVersion{
+	s.Set("foo/bar/baz", []*core.ModuleVersion{
 		{Version: "1", SourceURL: "https://example.com/foo/bar/baz/v1.tar.gz"},
 		{Version: "2", SourceURL: "https://example.com/foo/bar/baz/v2.tar.gz"},
 		{Version: "3", SourceURL: "https://example.com/foo/bar/baz/v3.tar.gz"},

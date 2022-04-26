@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v43/github"
-	"github.com/nrkno/terraform-registry/pkg/store"
+	"github.com/nrkno/terraform-registry/pkg/core"
 	"golang.org/x/oauth2"
 )
 
@@ -27,15 +27,15 @@ func NewGitHubStore(orgName, accessToken string) *GitHubStore {
 	}
 }
 
-func (c *GitHubStore) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*store.ModuleVersion, error) {
+func (c *GitHubStore) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*core.ModuleVersion, error) {
 	tags, err := c.listAllRepoTags(ctx, namespace, name)
 	if err != nil {
 		return nil, err
 	}
 
-	var vers []*store.ModuleVersion
+	var vers []*core.ModuleVersion
 	for _, t := range tags {
-		vers = append(vers, &store.ModuleVersion{
+		vers = append(vers, &core.ModuleVersion{
 			Version:   strings.TrimPrefix(t.GetName(), "v"),
 			GitRef:    t.GetName(),
 			SourceURL: fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", namespace, name, t.GetName()),
@@ -44,7 +44,7 @@ func (c *GitHubStore) ListModuleVersions(ctx context.Context, namespace, name, p
 	return vers, nil
 }
 
-func (c *GitHubStore) GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*store.ModuleVersion, error) {
+func (c *GitHubStore) GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*core.ModuleVersion, error) {
 	versions, err := c.ListModuleVersions(ctx, namespace, name, provider)
 	if err != nil {
 		return nil, err
