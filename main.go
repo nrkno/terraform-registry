@@ -78,6 +78,10 @@ func main() {
 }
 
 func (app *App) LoadAuthTokens() error {
+	if app.AuthTokenFile == "" {
+		return fmt.Errorf("LoadModules: AuthTokenFile is not specified")
+	}
+
 	b, err := os.ReadFile(app.AuthTokenFile)
 	if err != nil {
 		return fmt.Errorf("LoadModules: %w", err)
