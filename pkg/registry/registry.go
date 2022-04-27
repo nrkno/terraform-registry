@@ -33,8 +33,8 @@ type App struct {
 	GitHubToken string `envconfig:"GITHUB_TOKEN" required:"true"`
 	// The GitHub org name to use for module discovery
 	GitHubOrgName string `envconfig:"GITHUB_ORG_NAME" required:"true"`
-	// The GitHub repository topic to match. Will only expose repositories whose topics contain this.
-	//GitHubRepoMatchTopic string `split_words:"true" default:"terraform-module" required:"true"`
+	// The GitHub repository topic to match.
+	GitHubRepoTopic string `split_words:"true" default:"terraform-module" required:"true"`
 	// Whether to enable TLS termination. This requires TLSCertFile and TLSKeyFile.
 	TLSEnabled  bool   `split_words:"true"`
 	TLSCertFile string `split_words:"true"`
