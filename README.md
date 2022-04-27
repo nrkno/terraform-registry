@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 NRK
+
+SPDX-License-Identifier: GPL-3.0-only
+-->
+
 # Terraform Registry
 
 An implementation of a private Terraform registry.
@@ -39,7 +45,7 @@ Environment variables:
 Build and run
 
 ```
-$ go build ./cmd/terraform-registry/
+$ make build
 $ ./terraform-registry
 ```
 
@@ -150,7 +156,7 @@ $ openssl req -x509 -newkey rsa:4096 -sha256 -utf8 -days 365 -nodes -config open
 $ export LISTEN_ADDR=:8080 AUTH_DISABLED=true
 $ export GIT_HUB_ORG_NAME=myorg GIT_HUB_TOKEN=mytoken
 $ export TLS_ENABLED=true TLS_CERT_FILE=cert.crt TLS_KEY_FILE=cert.key
-$ go run .
+$ make run
 ```
 
 Now use `localhost.localdomain` as the registry URL for your module sources
@@ -166,9 +172,21 @@ module "foo" {
 ### Testing
 
 ```
-$ go test -v ./...
+$ make test
+```
+
+### Adding license information
+
+This adds or updates licensing information of all relevant files in the respository
+using [reuse](https://git.fsfe.org/reuse/tool#install). It is available in some package
+managers and in The Python Package Index as `reuse` (`pip install reuse`).
+
+```
+$ make reuse
 ```
 
 ## License
 
-See [./LICENSE](./LICENSE)
+This project and all its files are licensed under GNU GPL v3 unless stated
+otherwise with a different license header. See [./LICENSES](./LICENSES) for
+the full license text of all used licenses.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 NRK
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 FROM golang:1.17-bullseye as build
 
 WORKDIR /go/src/app

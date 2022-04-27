@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 NRK
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 terraform {
   required_version = ">= 1.0"
 }
