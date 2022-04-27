@@ -185,6 +185,12 @@ managers and in The Python Package Index as `reuse` (`pip install reuse`).
 $ make reuse
 ```
 
+## References
+- <https://www.terraform.io/language/modules/sources>
+- <https://www.terraform.io/internals/login-protocol>
+- <https://www.terraform.io/internals/module-registry-protocol>
+- <https://www.terraform.io/internals/provider-registry-protocol>
+
 ## License
 
 This project and all its files are licensed under GNU GPL v3 unless stated
