@@ -32,15 +32,15 @@ Supported backends:
 
 ## Running
 
-Environment variables:
-- `LISTEN_ADDR` HTTP(S) listen address (default: `:8080`)
-- `AUTH_DISABLED` disable authentication (default: `false`)
-- `AUTH_TOKEN_FILE` filename with newline-separated strings of valid tokens
-- `GITHUB_TOKEN` auth token for the GitHub API
-- `GITHUB_ORG_NAME` name of org or user to search for repositories in
-- `TLS_ENABLED` enable TLS (default: `false`)
-- `TLS_CERT_FILE` path to a TLS certificate
-- `TLS_KEY_FILE` path to a TLS key file
+All registry variants share some configuration in common.
+
+Command line arguments:
+- `-listen-addr`: HTTP server bind address (default: `:8080`)
+- `-auth-disabled`: Disable HTTP bearer token authentication (default: `false`)
+- `-auth-tokens-file`: File containing newline separated strings of valid tokens
+- `-tls-enabled`: Whether to enable TLS termination (default: `false`)
+- `-tls-cert-file`: Path to TLS certificate file
+- `-tls-key-file`: Path to TLS certificate private key file
 
 Build and run
 
@@ -48,6 +48,18 @@ Build and run
 $ make build
 $ ./terraform-registry
 ```
+
+### GitHub Registry
+
+This registry uses GitHub as a backend. Terraform module addresses are translated into
+GitHub repository addresses and the version strings are matched with repository tags.
+
+Environment variables:
+- `GITHUB_TOKEN`: auth token for the GitHub API
+
+Command line arguments:
+- `-github-org`: The GitHub org/owner to search for repositories in
+- `-github-topic`: A name of a topic to filter repository search by
 
 ## Development
 

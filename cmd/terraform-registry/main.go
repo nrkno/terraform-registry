@@ -6,38 +6,84 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
-	"github.com/kelseyhightower/envconfig"
 	"github.com/nrkno/terraform-registry/pkg/registry"
 	"github.com/nrkno/terraform-registry/pkg/store/github"
 )
 
 var (
 	WelcomeMessage = []byte("Terraform Registry\nhttps://github.com/nrkno/terraform-registry\n")
+
+	listenAddr     string
+	authDisabled   bool
+	authTokensFile string
+	tlsEnabled     bool
+	tlsCertFile    string
+	tlsKeyFile     string
+
+	gitHubToken     string
+	gitHubOrgName   string
+	gitHubRepoTopic string
 )
+
+func init() {
+	flag.StringVar(&listenAddr, "listen-addr", ":8080", "")
+	flag.BoolVar(&authDisabled, "auth-disabled", false, "")
+	flag.StringVar(&authTokensFile, "auth-tokens-file", "", "")
+	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
+	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
+	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
+
+	gitHubToken = os.Getenv("GITHUB_TOKEN")
+	flag.StringVar(&gitHubOrgName, "github-org", "", "GitHub org to find repositories in")
+	flag.StringVar(&gitHubRepoTopic, "github-topic", "", "GitHub topic to find repositories in")
+}
 
 func main() {
 	log.Default().SetFlags(log.Lshortfile)
 
-	reg := new(registry.Registry)
-	envconfig.MustProcess("", reg)
-	reg.SetupRoutes()
-
-	if !reg.IsAuthDisabled {
-		if err := reg.LoadAuthTokens(); err != nil {
-			log.Fatalf("error: failed to load auth tokens: %v", err)
-		}
-		log.Println("info: authentication is enabled")
-		log.Printf("info: loaded %d auth tokens", len(reg.GetAuthTokens()))
-	} else {
-		log.Println("warning: authentication is disabled")
+	// Config validation
+	flag.Parse()
+	if gitHubToken == "" {
+		log.Fatalf("env var not set: GITHUB_TOKEN")
+	}
+	if gitHubOrgName == "" {
+		log.Fatalf("arg not set: -github-org")
+	}
+	if gitHubRepoTopic == "" {
+		log.Fatalf("arg not set: -github-topic")
 	}
 
-	store := github.NewGitHubStore(reg.GitHubOrgName, reg.GitHubRepoTopic, reg.GitHubToken)
+	// Configure registry
+	reg := registry.NewRegistry()
+	reg.IsAuthDisabled = authDisabled
+	reg.AuthTokenFile = authTokensFile
+
+	store := github.NewGitHubStore(gitHubOrgName, gitHubRepoTopic, gitHubToken)
 	reg.SetModuleStore(store)
+
+	// Setup auth
+	if !reg.IsAuthDisabled {
+		tokens, err := parseAuthTokensFile(authTokensFile)
+		if err != nil {
+			log.Fatalf("error: failed to load auth tokens: %v", err)
+		}
+		if len(tokens) == 0 {
+			log.Fatalf("error: no tokens found in auth token file")
+		}
+		reg.SetAuthTokens(tokens)
+
+		log.Println("info: HTTP authentication enabled")
+		log.Printf("info: loaded %d auth tokens", len(tokens))
+	} else {
+		log.Println("warning: HTTP authentication disabled")
+	}
 
 	// Fill store cache initially
 	log.Println("info: loading GitHub store cache")
@@ -61,7 +107,7 @@ func main() {
 	}()
 
 	srv := http.Server{
-		Addr:              reg.ListenAddr,
+		Addr:              listenAddr,
 		Handler:           reg,
 		ReadTimeout:       3 * time.Second,
 		ReadHeaderTimeout: 3 * time.Second,
@@ -69,11 +115,30 @@ func main() {
 		IdleTimeout:       60 * time.Second, // keep-alive timeout
 	}
 
-	if reg.TLSEnabled {
-		log.Printf("info: Starting HTTP server (TLS enabled), listening on %s", reg.ListenAddr)
-		log.Fatalf("error: %v", srv.ListenAndServeTLS(reg.TLSCertFile, reg.TLSKeyFile))
+	if tlsEnabled {
+		log.Printf("info: Starting HTTP server (TLS enabled), listening on %s", listenAddr)
+		log.Fatalf("error: %v", srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
 	} else {
-		log.Printf("info: Starting HTTP server (TLS disabled), listening on %s", reg.ListenAddr)
+		log.Printf("info: Starting HTTP server (TLS disabled), listening on %s", listenAddr)
 		log.Fatalf("error: %v", srv.ListenAndServe())
 	}
+}
+
+// LoadAuthTokens loads valid auth tokens from the configured `app.AuthTokenFile`.
+func parseAuthTokensFile(filepath string) ([]string, error) {
+	var tokens []string
+
+	b, err := os.ReadFile(filepath)
+	if err != nil {
+		return tokens, err
+	}
+
+	lines := strings.Split(string(b), "\n")
+	for _, token := range lines {
+		if token = strings.TrimSpace(token); token != "" {
+			tokens = append(tokens, token)
+		}
+	}
+
+	return tokens, nil
 }

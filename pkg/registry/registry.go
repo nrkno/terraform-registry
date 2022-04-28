@@ -6,10 +6,8 @@ package registry
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -23,26 +21,23 @@ var (
 )
 
 type Registry struct {
-	// Registry server HTTP listen address
-	ListenAddr string `split_words:"true" default:":8080" required:"true"`
 	// Whether to disable auth
-	IsAuthDisabled bool `envconfig:"AUTH_DISABLED"`
+	IsAuthDisabled bool
 	// File containing newline separated strings with valid auth tokens
-	AuthTokenFile string `split_words:"true"`
-	// API access token for the GitHub API
-	GitHubToken string `envconfig:"GITHUB_TOKEN" required:"true"`
-	// The GitHub org name to use for module discovery
-	GitHubOrgName string `envconfig:"GITHUB_ORG_NAME" required:"true"`
-	// The GitHub repository topic to match.
-	GitHubRepoTopic string `split_words:"true" default:"terraform-module" required:"true"`
-	// Whether to enable TLS termination. This requires TLSCertFile and TLSKeyFile.
-	TLSEnabled  bool   `split_words:"true"`
-	TLSCertFile string `split_words:"true"`
-	TLSKeyFile  string `split_words:"true"`
+	AuthTokenFile string
 
 	router      *chi.Mux
 	authTokens  []string
 	moduleStore core.ModuleStore
+}
+
+func NewRegistry() *Registry {
+	reg := &Registry{
+		IsAuthDisabled: false,
+		AuthTokenFile:  "",
+	}
+	reg.setupRoutes()
+	return reg
 }
 
 // SetModuleStore sets the active module store for this instance.
@@ -60,28 +55,8 @@ func (app *Registry) SetAuthTokens(authTokens []string) {
 	app.authTokens = authTokens
 }
 
-// LoadAuthTokens loads valid auth tokens from the configured `app.AuthTokenFile`.
-func (app *Registry) LoadAuthTokens() error {
-	if app.AuthTokenFile == "" {
-		return fmt.Errorf("AuthTokenFile is not specified")
-	}
-
-	b, err := os.ReadFile(app.AuthTokenFile)
-	if err != nil {
-		return err
-	}
-
-	tokens := strings.Split(string(b), "\n")
-	for _, token := range tokens {
-		if token = strings.TrimSpace(token); token != "" {
-			app.authTokens = append(app.authTokens, token)
-		}
-	}
-	return nil
-}
-
 // Initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
-func (app *Registry) SetupRoutes() {
+func (app *Registry) setupRoutes() {
 	app.router = chi.NewRouter()
 	app.router.Use(middleware.Logger)
 	app.router.Use(app.TokenAuth)
