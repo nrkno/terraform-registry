@@ -20,6 +20,8 @@ import (
 var (
 	WelcomeMessage = []byte("Terraform Registry\nhttps://github.com/nrkno/terraform-registry\n")
 
+	registryType string
+
 	listenAddr     string
 	authDisabled   bool
 	authTokensFile string
@@ -33,6 +35,8 @@ var (
 )
 
 func init() {
+	flag.StringVar(&registryType, "store", "", "module store implementation to use (choices: github)")
+
 	flag.StringVar(&listenAddr, "listen-addr", ":8080", "")
 	flag.BoolVar(&authDisabled, "auth-disabled", false, "")
 	flag.StringVar(&authTokensFile, "auth-tokens-file", "", "")
@@ -46,29 +50,13 @@ func init() {
 }
 
 func main() {
+	flag.Parse()
 	log.Default().SetFlags(log.Lshortfile)
 
-	// Config validation
-	flag.Parse()
-	if gitHubToken == "" {
-		log.Fatalf("env var not set: GITHUB_TOKEN")
-	}
-	if gitHubOrgName == "" {
-		log.Fatalf("arg not set: -github-org")
-	}
-	if gitHubRepoTopic == "" {
-		log.Fatalf("arg not set: -github-topic")
-	}
-
-	// Configure registry
 	reg := registry.NewRegistry()
 	reg.IsAuthDisabled = authDisabled
 	reg.AuthTokenFile = authTokensFile
 
-	store := github.NewGitHubStore(gitHubOrgName, gitHubRepoTopic, gitHubToken)
-	reg.SetModuleStore(store)
-
-	// Setup auth
 	if !reg.IsAuthDisabled {
 		tokens, err := parseAuthTokensFile(authTokensFile)
 		if err != nil {
@@ -84,6 +72,47 @@ func main() {
 	} else {
 		log.Println("warning: HTTP authentication disabled")
 	}
+
+	// Configure the chosen registry type
+	switch registryType {
+	case "github":
+		gitHubRegistry(reg)
+	default:
+		log.Fatalln("error: invalid registry type")
+	}
+
+	srv := http.Server{
+		Addr:              listenAddr,
+		Handler:           reg,
+		ReadTimeout:       3 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
+		WriteTimeout:      3 * time.Second,
+		IdleTimeout:       60 * time.Second, // keep-alive timeout
+	}
+
+	if tlsEnabled {
+		log.Printf("info: Starting HTTP server (TLS enabled), listening on %s", listenAddr)
+		log.Fatalf("error: %v", srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
+	} else {
+		log.Printf("info: Starting HTTP server (TLS disabled), listening on %s", listenAddr)
+		log.Fatalf("error: %v", srv.ListenAndServe())
+	}
+}
+
+// Configure the registry to use GitHub as a module backend.
+func gitHubRegistry(reg *registry.Registry) {
+	if gitHubToken == "" {
+		log.Fatalf("env var not set: GITHUB_TOKEN")
+	}
+	if gitHubOrgName == "" {
+		log.Fatalf("arg not set: -github-org")
+	}
+	if gitHubRepoTopic == "" {
+		log.Fatalf("arg not set: -github-topic")
+	}
+
+	store := github.NewGitHubStore(gitHubOrgName, gitHubRepoTopic, gitHubToken)
+	reg.SetModuleStore(store)
 
 	// Fill store cache initially
 	log.Println("info: loading GitHub store cache")
@@ -105,23 +134,6 @@ func main() {
 			<-t.C
 		}
 	}()
-
-	srv := http.Server{
-		Addr:              listenAddr,
-		Handler:           reg,
-		ReadTimeout:       3 * time.Second,
-		ReadHeaderTimeout: 3 * time.Second,
-		WriteTimeout:      3 * time.Second,
-		IdleTimeout:       60 * time.Second, // keep-alive timeout
-	}
-
-	if tlsEnabled {
-		log.Printf("info: Starting HTTP server (TLS enabled), listening on %s", listenAddr)
-		log.Fatalf("error: %v", srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
-	} else {
-		log.Printf("info: Starting HTTP server (TLS disabled), listening on %s", listenAddr)
-		log.Fatalf("error: %v", srv.ListenAndServe())
-	}
 }
 
 // LoadAuthTokens loads valid auth tokens from the configured `app.AuthTokenFile`.
