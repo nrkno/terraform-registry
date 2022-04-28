@@ -18,8 +18,6 @@ import (
 )
 
 var (
-	WelcomeMessage = []byte("Terraform Registry\nhttps://github.com/nrkno/terraform-registry\n")
-
 	registryType string
 
 	listenAddr     string
