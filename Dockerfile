@@ -12,5 +12,5 @@ RUN go build -o /go/bin/app ./cmd/terraform-registry/
 
 FROM gcr.io/distroless/base-debian11
 COPY --from=build /go/bin/app /
-#USER 1000
+USER nonroot
 CMD ["/app"]
