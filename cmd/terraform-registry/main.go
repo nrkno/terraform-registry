@@ -22,7 +22,7 @@ var (
 func main() {
 	log.Default().SetFlags(log.Lshortfile)
 
-	reg := new(registry.App)
+	reg := new(registry.Registry)
 	envconfig.MustProcess("", reg)
 	reg.SetupRoutes()
 

@@ -26,7 +26,7 @@ func TestServiceDiscovery(t *testing.T) {
 	req := httptest.NewRequest("GET", "/.well-known/terraform.json", nil)
 	w := httptest.NewRecorder()
 
-	app := App{
+	app := Registry{
 		IsAuthDisabled: true,
 	}
 	app.SetupRoutes()
@@ -59,7 +59,7 @@ func TestLoadAuthTokens(t *testing.T) {
 	fmt.Fprintf(f, "foo\nbar\n\n\n\nbaz\n")
 	f.Seek(0, io.SeekStart)
 
-	app := App{
+	app := Registry{
 		AuthTokenFile: f.Name(),
 	}
 
@@ -75,7 +75,7 @@ func TestLoadAuthTokens(t *testing.T) {
 func TestTokenAuth(t *testing.T) {
 	is := is.New(t)
 
-	app := App{
+	app := Registry{
 		authTokens: []string{
 			"valid",
 		},
@@ -144,7 +144,7 @@ func TestListModuleVersions(t *testing.T) {
 		},
 	})
 
-	app := App{
+	app := Registry{
 		IsAuthDisabled: true,
 		moduleStore:    mstore,
 	}
@@ -228,7 +228,7 @@ func TestModuleDownload(t *testing.T) {
 		},
 	})
 
-	app := App{
+	app := Registry{
 		IsAuthDisabled: true,
 		moduleStore:    mstore,
 	}
