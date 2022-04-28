@@ -109,46 +109,13 @@ $ go build .
 
 ### Create a self-signed TLS certificate
 
-Create an OpenSSL configuration file to simplify creation of a self-signed cert.
+A script and an OpenSSL config file to create a self-signed certificate is
+included in [./_tools/openssl/](./_tools/openssl/).
 
-```
-$ tee > openssl.conf
-[CA_default]
-copy_extensions = copy
+Update *openssl.conf* with your desired `[alternate_names]` and run
+*create_self_signed_cert.sh*.
 
-[req]
-default_bits = 4096
-prompt = no
-default_md = sha256
-distinguished_name = req_distinguished_name
-x509_extensions = v3_ca
-
-[req_distinguished_name]
-C = NO
-ST = Oslo
-L = Oslo
-O = Internet Widgits Pty Ltd
-OU = Example
-emailAddress = someone@example.com
-CN = example.com
-
-[v3_ca]
-basicConstraints = CA:FALSE
-keyUsage = digitalSignature, keyEncipherment
-subjectAltName = @alternate_names
-
-[alternate_names]
-DNS.1 = localhost
-DNS.2 = localhost.localdomain
-```
-
-Create a self-signed certificate and private key
-
-```
-$ openssl req -x509 -newkey rsa:4096 -sha256 -utf8 -days 365 -nodes -config openssl.conf -keyout cert.key -out cert.crt
-```
-
-(source: https://stackoverflow.com/a/46100856/90674)
+<small>(source: <https://stackoverflow.com/a/46100856>)</small>
 
 ### Run registry locally
 

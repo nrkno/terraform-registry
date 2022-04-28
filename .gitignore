@@ -2,3 +2,5 @@
 /tmp
 .terraform*
 /*.env
+_tools/openssl/cert.crt
+_tools/openssl/cert.key
