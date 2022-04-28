@@ -156,17 +156,17 @@ func (s *GitHubStore) searchRepositories(ctx context.Context) ([]*github.Reposit
 	)
 
 	if s.orgFilter != "" {
-		filters = append(filters, "org:"+s.orgFilter)
+		filters = append(filters, fmt.Sprintf(`org:"%s"`, s.orgFilter))
 	}
 	if s.topicFilter != "" {
-		filters = append(filters, "topic:"+s.topicFilter)
+		filters = append(filters, fmt.Sprintf(`topic:"%s"`, s.topicFilter))
 	}
 
 	opts := &github.SearchOptions{}
 	opts.ListOptions.PerPage = 100
 
 	for {
-		result, resp, err := s.client.Search.Repositories(ctx, strings.Join(filters, "+"), opts)
+		result, resp, err := s.client.Search.Repositories(ctx, strings.Join(filters, " "), opts)
 		if err != nil {
 			return allRepos, err
 		}
