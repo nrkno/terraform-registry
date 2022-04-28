@@ -63,12 +63,12 @@ func (app *Registry) SetAuthTokens(authTokens []string) {
 // LoadAuthTokens loads valid auth tokens from the configured `app.AuthTokenFile`.
 func (app *Registry) LoadAuthTokens() error {
 	if app.AuthTokenFile == "" {
-		return fmt.Errorf("LoadModules: AuthTokenFile is not specified")
+		return fmt.Errorf("AuthTokenFile is not specified")
 	}
 
 	b, err := os.ReadFile(app.AuthTokenFile)
 	if err != nil {
-		return fmt.Errorf("LoadModules: %w", err)
+		return err
 	}
 
 	tokens := strings.Split(string(b), "\n")
