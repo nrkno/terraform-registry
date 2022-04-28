@@ -18,9 +18,9 @@ reuse:
 	find . -type f \
 		| grep -vP '^(./.git|./.reuse|./LICENSES/|./terraform-registry)' \
 		| grep -vP '(\.tf)$$' \
-		| xargs reuse addheader --license GPL-3.0-only --copyright NRK --year 2022
+		| xargs reuse addheader --license GPL-3.0-only --copyright NRK --year `date +%Y`
 	find . -type f -name '*.tf' \
-		| xargs reuse addheader --license GPL-3.0-only --copyright NRK --year 2022 --style python
+		| xargs reuse addheader --license GPL-3.0-only --copyright NRK --year `date +%Y` --style python
 
 clean:
 	go clean
