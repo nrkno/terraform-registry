@@ -145,7 +145,7 @@ DNS.2 = localhost.localdomain
 Create a self-signed certificate and private key
 
 ```
-$ openssl req -x509 -newkey rsa:4096 -sha256 -utf8 -days 365 -nodes -config openssl.cnf -keyout cert.key -out cert.crt
+$ openssl req -x509 -newkey rsa:4096 -sha256 -utf8 -days 365 -nodes -config openssl.conf -keyout cert.key -out cert.crt
 ```
 
 (source: https://stackoverflow.com/a/46100856/90674)
