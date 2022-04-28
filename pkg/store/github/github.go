@@ -7,6 +7,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 
@@ -109,6 +110,7 @@ func (s *GitHubStore) ReloadCache(ctx context.Context) error {
 			}
 		}
 
+		log.Printf("debug: added module '%s' with %d versions", key, len(versions))
 		fresh[key] = versions
 	}
 
