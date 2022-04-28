@@ -85,8 +85,15 @@ func (s *GitHubStore) ReloadCache(ctx context.Context) error {
 	fresh := make(map[string][]*core.ModuleVersion)
 
 	for _, repo := range repos {
-		owner := repo.GetOwner().GetName()
-		name := repo.GetName()
+		// Splitting owner from FullName to avoid getting it from GetOwner().GetName(),
+		// as it seems to be empty, maybe due to missing OAuth permission scopes.
+		parts := strings.Split(repo.GetFullName(), "/")
+		if len(parts) != 2 {
+			return fmt.Errorf("repo.FullName is not in expected format 'owner/repo', is '%s'", repo.GetFullName())
+		}
+
+		owner := parts[0]
+		name := parts[1]
 		key := fmt.Sprintf("%s/%s/generic", owner, name)
 
 		tags, err := s.listAllRepoTags(ctx, owner, name)
