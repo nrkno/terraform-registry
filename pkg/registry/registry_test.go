@@ -7,11 +7,9 @@ package registry
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sort"
 	"testing"
 
@@ -26,10 +24,10 @@ func TestServiceDiscovery(t *testing.T) {
 	req := httptest.NewRequest("GET", "/.well-known/terraform.json", nil)
 	w := httptest.NewRecorder()
 
-	app := App{
+	app := Registry{
 		IsAuthDisabled: true,
 	}
-	app.SetupRoutes()
+	app.setupRoutes()
 	app.router.ServeHTTP(w, req)
 
 	resp := w.Result()
@@ -50,37 +48,15 @@ func TestServiceDiscovery(t *testing.T) {
 
 }
 
-func TestLoadAuthTokens(t *testing.T) {
-	is := is.New(t)
-
-	f, err := os.CreateTemp("", "")
-	is.NoErr(err)
-
-	fmt.Fprintf(f, "foo\nbar\n\n\n\nbaz\n")
-	f.Seek(0, io.SeekStart)
-
-	app := App{
-		AuthTokenFile: f.Name(),
-	}
-
-	err = app.LoadAuthTokens()
-	is.NoErr(err)
-
-	is.Equal(len(app.authTokens), 3)
-	is.Equal(app.authTokens[0], "foo")
-	is.Equal(app.authTokens[1], "bar")
-	is.Equal(app.authTokens[2], "baz")
-}
-
 func TestTokenAuth(t *testing.T) {
 	is := is.New(t)
 
-	app := App{
+	app := Registry{
 		authTokens: []string{
 			"valid",
 		},
 	}
-	app.SetupRoutes()
+	app.setupRoutes()
 
 	testcases := []struct {
 		name   string
@@ -144,11 +120,11 @@ func TestListModuleVersions(t *testing.T) {
 		},
 	})
 
-	app := App{
+	app := Registry{
 		IsAuthDisabled: true,
 		moduleStore:    mstore,
 	}
-	app.SetupRoutes()
+	app.setupRoutes()
 
 	testcases := []struct {
 		name         string
@@ -228,11 +204,11 @@ func TestModuleDownload(t *testing.T) {
 		},
 	})
 
-	app := App{
+	app := Registry{
 		IsAuthDisabled: true,
 		moduleStore:    mstore,
 	}
-	app.SetupRoutes()
+	app.setupRoutes()
 
 	testcases := []struct {
 		name         string

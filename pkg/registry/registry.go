@@ -6,10 +6,8 @@ package registry
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -22,66 +20,43 @@ var (
 	WelcomeMessage = []byte("Terraform Registry\nhttps://github.com/nrkno/terraform-registry\n")
 )
 
-type App struct {
-	// Registry server HTTP listen address
-	ListenAddr string `split_words:"true" default:":8080" required:"true"`
+type Registry struct {
 	// Whether to disable auth
-	IsAuthDisabled bool `envconfig:"AUTH_DISABLED"`
+	IsAuthDisabled bool
 	// File containing newline separated strings with valid auth tokens
-	AuthTokenFile string `split_words:"true"`
-	// API access token for the GitHub API
-	GitHubToken string `envconfig:"GITHUB_TOKEN" required:"true"`
-	// The GitHub org name to use for module discovery
-	GitHubOrgName string `envconfig:"GITHUB_ORG_NAME" required:"true"`
-	// The GitHub repository topic to match.
-	GitHubRepoTopic string `split_words:"true" default:"terraform-module" required:"true"`
-	// Whether to enable TLS termination. This requires TLSCertFile and TLSKeyFile.
-	TLSEnabled  bool   `split_words:"true"`
-	TLSCertFile string `split_words:"true"`
-	TLSKeyFile  string `split_words:"true"`
+	AuthTokenFile string
 
 	router      *chi.Mux
 	authTokens  []string
 	moduleStore core.ModuleStore
 }
 
+func NewRegistry() *Registry {
+	reg := &Registry{
+		IsAuthDisabled: false,
+		AuthTokenFile:  "",
+	}
+	reg.setupRoutes()
+	return reg
+}
+
 // SetModuleStore sets the active module store for this instance.
-func (app *App) SetModuleStore(s core.ModuleStore) {
+func (app *Registry) SetModuleStore(s core.ModuleStore) {
 	app.moduleStore = s
 }
 
 // GetAuthTokens gets the valid auth tokens configured for this instance.
-func (app *App) GetAuthTokens() []string {
+func (app *Registry) GetAuthTokens() []string {
 	return app.authTokens
 }
 
 // SetAuthTokens sets the valid auth tokens configured for this instance.
-func (app *App) SetAuthTokens(authTokens []string) {
+func (app *Registry) SetAuthTokens(authTokens []string) {
 	app.authTokens = authTokens
 }
 
-// LoadAuthTokens loads valid auth tokens from the configured `app.AuthTokenFile`.
-func (app *App) LoadAuthTokens() error {
-	if app.AuthTokenFile == "" {
-		return fmt.Errorf("LoadModules: AuthTokenFile is not specified")
-	}
-
-	b, err := os.ReadFile(app.AuthTokenFile)
-	if err != nil {
-		return fmt.Errorf("LoadModules: %w", err)
-	}
-
-	tokens := strings.Split(string(b), "\n")
-	for _, token := range tokens {
-		if token = strings.TrimSpace(token); token != "" {
-			app.authTokens = append(app.authTokens, token)
-		}
-	}
-	return nil
-}
-
 // Initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
-func (app *App) SetupRoutes() {
+func (app *Registry) setupRoutes() {
 	app.router = chi.NewRouter()
 	app.router.Use(middleware.Logger)
 	app.router.Use(app.TokenAuth)
@@ -92,12 +67,12 @@ func (app *App) SetupRoutes() {
 	app.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload())
 }
 
-func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (app *Registry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	app.router.ServeHTTP(w, r)
 }
 
 // TokenAuth is a middleware function for token header authentication.
-func (app *App) TokenAuth(next http.Handler) http.Handler {
+func (app *Registry) TokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if app.IsAuthDisabled {
 			next.ServeHTTP(w, r)
@@ -131,7 +106,7 @@ func (app *App) TokenAuth(next http.Handler) http.Handler {
 	})
 }
 
-func (app *App) Index() http.HandlerFunc {
+func (app *Registry) Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(WelcomeMessage); err != nil {
 			log.Printf("error: Index: %v", err)
@@ -139,7 +114,7 @@ func (app *App) Index() http.HandlerFunc {
 	}
 }
 
-func (app *App) Health() http.HandlerFunc {
+func (app *Registry) Health() http.HandlerFunc {
 	resp := []byte("OK")
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(resp); err != nil {
@@ -164,7 +139,7 @@ type ServiceDiscoveryResponseLoginV1 struct {
 // ServiceDiscovery returns a handler that returns a JSON payload for Terraform service discovery.
 // https://www.terraform.io/internals/login-protocol
 // https://www.terraform.io/internals/module-registry-protocol
-func (app *App) ServiceDiscovery() http.HandlerFunc {
+func (app *Registry) ServiceDiscovery() http.HandlerFunc {
 	spec := ServiceDiscoveryResponse{
 		ModulesV1: "/v1/modules/",
 		LoginV1: ServiceDiscoveryResponseLoginV1{
@@ -203,7 +178,7 @@ type ModuleVersionsResponseModuleVersion struct {
 
 // ModuleVersions returns a handler that returns a list of available versions for a module.
 // https://www.terraform.io/internals/module-registry-protocol#list-available-versions-for-a-specific-module
-func (app *App) ModuleVersions() http.HandlerFunc {
+func (app *Registry) ModuleVersions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			namespace = chi.URLParam(r, "namespace")
@@ -241,7 +216,7 @@ func (app *App) ModuleVersions() http.HandlerFunc {
 
 // ModuleDownload returns a handler that returns a download link for a specific version of a module.
 // https://www.terraform.io/internals/module-registry-protocol#download-source-code-for-a-specific-module-version
-func (app *App) ModuleDownload() http.HandlerFunc {
+func (app *Registry) ModuleDownload() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			namespace = chi.URLParam(r, "namespace")
