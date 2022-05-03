@@ -63,8 +63,8 @@ func (reg *Registry) setupRoutes() {
 	reg.router.Get("/", reg.Index())
 	reg.router.Get("/health", reg.Health())
 	reg.router.Get("/.well-known/terraform.json", reg.ServiceDiscovery())
-	reg.router.Get("/v1/modules/{namespace}/{name}/{system}/versions", reg.ModuleVersions())
-	reg.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", reg.ModuleDownload())
+	reg.router.Get("/v1/modules/{namespace}/{name}/{provider}/versions", reg.ModuleVersions())
+	reg.router.Get("/v1/modules/{namespace}/{name}/{provider}/{version}/download", reg.ModuleDownload())
 }
 
 func (reg *Registry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -183,10 +183,10 @@ func (reg *Registry) ModuleVersions() http.HandlerFunc {
 		var (
 			namespace = chi.URLParam(r, "namespace")
 			name      = chi.URLParam(r, "name")
-			system    = chi.URLParam(r, "system")
+			provider  = chi.URLParam(r, "provider")
 		)
 
-		versions, err := reg.moduleStore.ListModuleVersions(r.Context(), namespace, name, system)
+		versions, err := reg.moduleStore.ListModuleVersions(r.Context(), namespace, name, provider)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			log.Printf("error: ModuleVersions: %v", err)
@@ -221,11 +221,11 @@ func (reg *Registry) ModuleDownload() http.HandlerFunc {
 		var (
 			namespace = chi.URLParam(r, "namespace")
 			name      = chi.URLParam(r, "name")
-			system    = chi.URLParam(r, "system")
+			provider  = chi.URLParam(r, "provider")
 			version   = chi.URLParam(r, "version")
 		)
 
-		ver, err := reg.moduleStore.GetModuleVersion(r.Context(), namespace, name, system, version)
+		ver, err := reg.moduleStore.GetModuleVersion(r.Context(), namespace, name, provider, version)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			log.Printf("error: ModuleDownload: %v", err)
