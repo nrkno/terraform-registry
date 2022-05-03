@@ -11,11 +11,11 @@ WORKDIR /go/src/app
 ADD . /go/src/app
 
 RUN go get -d -v ./...
-RUN go build -o /go/bin/app ./cmd/terraform-registry/
+RUN go build -o /go/bin/terraform-registry ./cmd/terraform-registry/
 
 FROM gcr.io/distroless/base-debian11
-COPY --from=build /go/bin/app /
+COPY --from=build /go/bin/terraform-registry /
 COPY --from=build /usr/local/bin/dumb-init /bin/
 USER nonroot
 ENTRYPOINT ["/bin/dumb-init", "--"]
-CMD ["/app"]
+CMD ["/terraform-registry"]
