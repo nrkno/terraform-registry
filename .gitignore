@@ -1,0 +1,4 @@
+/terraform-registry
+/tmp
+.terraform*
+/*.env

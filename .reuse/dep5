@@ -1,0 +1,10 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: terraform-registry
+Upstream-Contact: Stig Otnes Kolstad <stig.otnes.kolstad@nrk.no>
+Source: https://github.com/nrkno/terraform-registry
+
+# Sample paragraph, commented out:
+#
+# Files: src/*
+# Copyright: $YEAR $NAME <$CONTACT>
+# License: ...
