@@ -24,11 +24,11 @@ func TestServiceDiscovery(t *testing.T) {
 	req := httptest.NewRequest("GET", "/.well-known/terraform.json", nil)
 	w := httptest.NewRecorder()
 
-	app := Registry{
+	reg := Registry{
 		IsAuthDisabled: true,
 	}
-	app.setupRoutes()
-	app.router.ServeHTTP(w, req)
+	reg.setupRoutes()
+	reg.router.ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -51,12 +51,12 @@ func TestServiceDiscovery(t *testing.T) {
 func TestTokenAuth(t *testing.T) {
 	is := is.New(t)
 
-	app := Registry{
+	reg := Registry{
 		authTokens: []string{
 			"valid",
 		},
 	}
-	app.setupRoutes()
+	reg.setupRoutes()
 
 	testcases := []struct {
 		name   string
@@ -92,7 +92,7 @@ func TestTokenAuth(t *testing.T) {
 			req.Header.Set("Authorization", "Bearer "+tc.token)
 			w := httptest.NewRecorder()
 
-			app.router.ServeHTTP(w, req)
+			reg.router.ServeHTTP(w, req)
 
 			resp := w.Result()
 			body, err := io.ReadAll(resp.Body)
@@ -120,11 +120,11 @@ func TestListModuleVersions(t *testing.T) {
 		},
 	})
 
-	app := Registry{
+	reg := Registry{
 		IsAuthDisabled: true,
 		moduleStore:    mstore,
 	}
-	app.setupRoutes()
+	reg.setupRoutes()
 
 	testcases := []struct {
 		name         string
@@ -159,7 +159,7 @@ func TestListModuleVersions(t *testing.T) {
 			req := httptest.NewRequest("GET", "/v1/modules/"+tc.module+"/versions", nil)
 			w := httptest.NewRecorder()
 
-			app.router.ServeHTTP(w, req)
+			reg.router.ServeHTTP(w, req)
 
 			resp := w.Result()
 			body, err := io.ReadAll(resp.Body)
@@ -204,11 +204,11 @@ func TestModuleDownload(t *testing.T) {
 		},
 	})
 
-	app := Registry{
+	reg := Registry{
 		IsAuthDisabled: true,
 		moduleStore:    mstore,
 	}
-	app.setupRoutes()
+	reg.setupRoutes()
 
 	testcases := []struct {
 		name         string
@@ -237,7 +237,7 @@ func TestModuleDownload(t *testing.T) {
 			req := httptest.NewRequest("GET", "/v1/modules/"+tc.moduleString+"/download", nil)
 			w := httptest.NewRecorder()
 
-			app.router.ServeHTTP(w, req)
+			reg.router.ServeHTTP(w, req)
 
 			resp := w.Result()
 			is.Equal(resp.StatusCode, tc.status)

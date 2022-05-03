@@ -41,40 +41,40 @@ func NewRegistry() *Registry {
 }
 
 // SetModuleStore sets the active module store for this instance.
-func (app *Registry) SetModuleStore(s core.ModuleStore) {
-	app.moduleStore = s
+func (reg *Registry) SetModuleStore(s core.ModuleStore) {
+	reg.moduleStore = s
 }
 
 // GetAuthTokens gets the valid auth tokens configured for this instance.
-func (app *Registry) GetAuthTokens() []string {
-	return app.authTokens
+func (reg *Registry) GetAuthTokens() []string {
+	return reg.authTokens
 }
 
 // SetAuthTokens sets the valid auth tokens configured for this instance.
-func (app *Registry) SetAuthTokens(authTokens []string) {
-	app.authTokens = authTokens
+func (reg *Registry) SetAuthTokens(authTokens []string) {
+	reg.authTokens = authTokens
 }
 
 // Initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
-func (app *Registry) setupRoutes() {
-	app.router = chi.NewRouter()
-	app.router.Use(middleware.Logger)
-	app.router.Use(app.TokenAuth)
-	app.router.Get("/", app.Index())
-	app.router.Get("/health", app.Health())
-	app.router.Get("/.well-known/terraform.json", app.ServiceDiscovery())
-	app.router.Get("/v1/modules/{namespace}/{name}/{system}/versions", app.ModuleVersions())
-	app.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", app.ModuleDownload())
+func (reg *Registry) setupRoutes() {
+	reg.router = chi.NewRouter()
+	reg.router.Use(middleware.Logger)
+	reg.router.Use(reg.TokenAuth)
+	reg.router.Get("/", reg.Index())
+	reg.router.Get("/health", reg.Health())
+	reg.router.Get("/.well-known/terraform.json", reg.ServiceDiscovery())
+	reg.router.Get("/v1/modules/{namespace}/{name}/{system}/versions", reg.ModuleVersions())
+	reg.router.Get("/v1/modules/{namespace}/{name}/{system}/{version}/download", reg.ModuleDownload())
 }
 
-func (app *Registry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	app.router.ServeHTTP(w, r)
+func (reg *Registry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	reg.router.ServeHTTP(w, r)
 }
 
 // TokenAuth is a middleware function for token header authentication.
-func (app *Registry) TokenAuth(next http.Handler) http.Handler {
+func (reg *Registry) TokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if app.IsAuthDisabled {
+		if reg.IsAuthDisabled {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -95,7 +95,7 @@ func (app *Registry) TokenAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		for _, t := range app.authTokens {
+		for _, t := range reg.authTokens {
 			if t == token {
 				next.ServeHTTP(w, r)
 				return
@@ -106,7 +106,7 @@ func (app *Registry) TokenAuth(next http.Handler) http.Handler {
 	})
 }
 
-func (app *Registry) Index() http.HandlerFunc {
+func (reg *Registry) Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(WelcomeMessage); err != nil {
 			log.Printf("error: Index: %v", err)
@@ -114,7 +114,7 @@ func (app *Registry) Index() http.HandlerFunc {
 	}
 }
 
-func (app *Registry) Health() http.HandlerFunc {
+func (reg *Registry) Health() http.HandlerFunc {
 	resp := []byte("OK")
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(resp); err != nil {
@@ -139,7 +139,7 @@ type ServiceDiscoveryResponseLoginV1 struct {
 // ServiceDiscovery returns a handler that returns a JSON payload for Terraform service discovery.
 // https://www.terraform.io/internals/login-protocol
 // https://www.terraform.io/internals/module-registry-protocol
-func (app *Registry) ServiceDiscovery() http.HandlerFunc {
+func (reg *Registry) ServiceDiscovery() http.HandlerFunc {
 	spec := ServiceDiscoveryResponse{
 		ModulesV1: "/v1/modules/",
 		LoginV1: ServiceDiscoveryResponseLoginV1{
@@ -178,7 +178,7 @@ type ModuleVersionsResponseModuleVersion struct {
 
 // ModuleVersions returns a handler that returns a list of available versions for a module.
 // https://www.terraform.io/internals/module-registry-protocol#list-available-versions-for-a-specific-module
-func (app *Registry) ModuleVersions() http.HandlerFunc {
+func (reg *Registry) ModuleVersions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			namespace = chi.URLParam(r, "namespace")
@@ -186,7 +186,7 @@ func (app *Registry) ModuleVersions() http.HandlerFunc {
 			system    = chi.URLParam(r, "system")
 		)
 
-		versions, err := app.moduleStore.ListModuleVersions(r.Context(), namespace, name, system)
+		versions, err := reg.moduleStore.ListModuleVersions(r.Context(), namespace, name, system)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			log.Printf("error: ModuleVersions: %v", err)
@@ -216,7 +216,7 @@ func (app *Registry) ModuleVersions() http.HandlerFunc {
 
 // ModuleDownload returns a handler that returns a download link for a specific version of a module.
 // https://www.terraform.io/internals/module-registry-protocol#download-source-code-for-a-specific-module-version
-func (app *Registry) ModuleDownload() http.HandlerFunc {
+func (reg *Registry) ModuleDownload() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			namespace = chi.URLParam(r, "namespace")
@@ -225,7 +225,7 @@ func (app *Registry) ModuleDownload() http.HandlerFunc {
 			version   = chi.URLParam(r, "version")
 		)
 
-		ver, err := app.moduleStore.GetModuleVersion(r.Context(), namespace, name, system, version)
+		ver, err := reg.moduleStore.GetModuleVersion(r.Context(), namespace, name, system, version)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			log.Printf("error: ModuleDownload: %v", err)
