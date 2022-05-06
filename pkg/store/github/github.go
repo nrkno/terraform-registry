@@ -19,7 +19,7 @@ import (
 // GitHubStore should not be used directly. Use `NewGitHubStore` instead.
 type GitHubStore struct {
 	// Org to filter repositories by. Leave empty for all.
-	orgFilter string
+	ownerFilter string
 	// Topic to filter repositories by. Leave empty for all.
 	topicFilter string
 
@@ -28,14 +28,14 @@ type GitHubStore struct {
 	mut    sync.RWMutex
 }
 
-func NewGitHubStore(orgFilter, topicFilter, accessToken string) *GitHubStore {
+func NewGitHubStore(ownerFilter, topicFilter, accessToken string) *GitHubStore {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: accessToken},
 	)
 	c := oauth2.NewClient(context.TODO(), ts)
 
 	return &GitHubStore{
-		orgFilter:   orgFilter,
+		ownerFilter: ownerFilter,
 		topicFilter: topicFilter,
 		client:      github.NewClient(c),
 		cache:       make(map[string][]*core.ModuleVersion),
@@ -157,8 +157,8 @@ func (s *GitHubStore) searchRepositories(ctx context.Context) ([]*github.Reposit
 		filters  []string
 	)
 
-	if s.orgFilter != "" {
-		filters = append(filters, fmt.Sprintf(`org:"%s"`, s.orgFilter))
+	if s.ownerFilter != "" {
+		filters = append(filters, fmt.Sprintf(`org:"%s"`, s.ownerFilter))
 	}
 	if s.topicFilter != "" {
 		filters = append(filters, fmt.Sprintf(`topic:"%s"`, s.topicFilter))
