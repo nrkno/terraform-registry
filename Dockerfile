@@ -17,5 +17,5 @@ FROM gcr.io/distroless/base-debian11
 COPY --from=build /go/src/app/terraform-registry /
 COPY --from=build /usr/local/bin/dumb-init /bin/
 USER nonroot
-ENTRYPOINT ["/bin/dumb-init", "--"]
-CMD ["/terraform-registry"]
+ENTRYPOINT ["/bin/dumb-init", "--", "/terraform-registry"]
+CMD ["-help"]
