@@ -28,7 +28,7 @@ var (
 	tlsKeyFile     string
 
 	gitHubToken     string
-	gitHubOrgName   string
+	gitHubOwner     string
 	gitHubRepoTopic string
 )
 
@@ -43,7 +43,7 @@ func init() {
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
 
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
-	flag.StringVar(&gitHubOrgName, "github-org", "", "GitHub org to find repositories in")
+	flag.StringVar(&gitHubOwner, "github-owner", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubRepoTopic, "github-topic", "", "GitHub topic to find repositories in")
 }
 
@@ -102,14 +102,14 @@ func gitHubRegistry(reg *registry.Registry) {
 	if gitHubToken == "" {
 		log.Fatalf("env var not set: GITHUB_TOKEN")
 	}
-	if gitHubOrgName == "" {
-		log.Fatalf("arg not set: -github-org")
+	if gitHubOwnerFilter == "" {
+		log.Fatalf("arg not set: -github-owner")
 	}
 	if gitHubRepoTopic == "" {
 		log.Fatalf("arg not set: -github-topic")
 	}
 
-	store := github.NewGitHubStore(gitHubOrgName, gitHubRepoTopic, gitHubToken)
+	store := github.NewGitHubStore(gitHubOwner, gitHubRepoTopic, gitHubToken)
 	reg.SetModuleStore(store)
 
 	// Fill store cache initially
