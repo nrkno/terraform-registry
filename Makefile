@@ -8,6 +8,9 @@ BINARY_NAME=./terraform-registry
 build:
 	go build -o ${BINARY_NAME} ${CMD_SOURCE}
 
+build-docker:
+	docker build . -t terraform-registry
+
 test:
 	go test ./...
 
