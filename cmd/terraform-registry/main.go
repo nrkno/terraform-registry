@@ -43,8 +43,8 @@ func init() {
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
 
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
-	flag.StringVar(&gitHubOwnerFilter, "github-owner", "", "GitHub org/user repository filter")
-	flag.StringVar(&gitHubTopicFilter, "github-topic", "", "GitHub topic repository filter")
+	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
+	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
 }
 
 func main() {
@@ -103,10 +103,10 @@ func gitHubRegistry(reg *registry.Registry) {
 		log.Fatalf("env var not set: GITHUB_TOKEN")
 	}
 	if gitHubOwnerFilter == "" {
-		log.Fatalf("arg not set: -github-owner")
+		log.Fatalf("arg not set: -github-owner-filter")
 	}
 	if gitHubTopicFilter == "" {
-		log.Fatalf("arg not set: -github-topic")
+		log.Fatalf("arg not set: -github-topic-filter")
 	}
 
 	store := github.NewGitHubStore(gitHubOwnerFilter, gitHubTopicFilter, gitHubToken)

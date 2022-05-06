@@ -58,8 +58,8 @@ Environment variables:
 - `GITHUB_TOKEN`: auth token for the GitHub API
 
 Command line arguments:
-- `-github-org`: The GitHub org/owner to search for repositories in
-- `-github-topic`: A name of a topic to filter repository search by
+- `-github-owner-filter`: GitHub org/user repository filter
+- `-github-topic-filter`: GitHub topic repository filter
 
 ## Development
 
