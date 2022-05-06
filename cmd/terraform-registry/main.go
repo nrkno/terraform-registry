@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	registryType string
+	storeType string
 
 	listenAddr     string
 	authDisabled   bool
@@ -33,7 +33,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&registryType, "store", "", "module store implementation to use (choices: github)")
+	flag.StringVar(&storeType, "store", "", "store backend to use (choices: github)")
 
 	flag.StringVar(&listenAddr, "listen-addr", ":8080", "")
 	flag.BoolVar(&authDisabled, "auth-disabled", false, "")
@@ -72,11 +72,11 @@ func main() {
 	}
 
 	// Configure the chosen registry type
-	switch registryType {
+	switch storeType {
 	case "github":
 		gitHubRegistry(reg)
 	default:
-		log.Fatalln("error: invalid registry type")
+		log.Fatalln("error: invalid store type")
 	}
 
 	srv := http.Server{
