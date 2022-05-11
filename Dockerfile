@@ -14,8 +14,8 @@ RUN go get -d -v ./...
 RUN make build
 
 FROM gcr.io/distroless/base-debian11
-COPY --from=build /go/src/app/terraform-registry /
+COPY --from=build /go/src/app/terraform-registry /bin/
 COPY --from=build /usr/local/bin/dumb-init /bin/
 USER nonroot
-ENTRYPOINT ["/bin/dumb-init", "--", "/terraform-registry"]
+ENTRYPOINT ["/bin/dumb-init", "--", "/bin/terraform-registry"]
 CMD ["-help"]
