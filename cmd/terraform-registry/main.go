@@ -18,14 +18,13 @@ import (
 )
 
 var (
-	storeType string
-
 	listenAddr     string
 	authDisabled   bool
 	authTokensFile string
 	tlsEnabled     bool
 	tlsCertFile    string
 	tlsKeyFile     string
+	storeType      string
 
 	gitHubToken       string
 	gitHubOwnerFilter string
@@ -33,14 +32,13 @@ var (
 )
 
 func init() {
-	flag.StringVar(&storeType, "store", "", "store backend to use (choices: github)")
-
 	flag.StringVar(&listenAddr, "listen-addr", ":8080", "")
 	flag.BoolVar(&authDisabled, "auth-disabled", false, "")
 	flag.StringVar(&authTokensFile, "auth-tokens-file", "", "")
 	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
+	flag.StringVar(&storeType, "store", "", "store backend to use (choices: github)")
 
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
