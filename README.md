@@ -22,17 +22,12 @@ Supported Terraform protocols:
 - [ ] providers.v1
 
 Supported backends:
-- `MemoryStore`: in-memory store that can be populated manually
-  - Must be populated manually
-- `GitHubStore`: queries the GitHub API for modules, version tags and SSH download URLs
-  - A query for module `namespace/name/provider` will return repository `namespace/name`
-  - `provider` part of module URLs is not implemented. Can be set to anything at all.
-  - Works for a single specified org/user
-  - No verification for the repo actually being a Terraform repo
+- `MemoryStore`: a dumb in-memory store currently used for testing
+- [`GitHubStore`](#github-store): queries the GitHub API for modules, version tags and SSH download URLs
 
 ## Running
 
-All registry variants share some configuration in common.
+All registry store types share some configuration in common.
 
 Command line arguments:
 - `-listen-addr`: HTTP server bind address (default: `:8080`)
@@ -49,10 +44,24 @@ $ make build
 $ ./terraform-registry
 ```
 
-### GitHub Registry
+Additionally, depending on the selected store type, some options are described
+in the next subsections.
 
-This registry uses GitHub as a backend. Terraform module addresses are translated into
-GitHub repository addresses and the version strings are matched with repository tags.
+### GitHub Store
+
+This store uses GitHub as a backend. A query for the module address
+`namespace/name/provider` will return the GitHub repository `namespace/name`.
+
+The `provider` part of the module URL must always be set to `generic` since
+this store implementation has no notion of the type of providers the modules
+are designed for.
+
+Version strings are matched with repository tags. Upon loading the list of
+repositories, tags prefixed with `v` will have their prefix removed.
+I.e. a repository tag `v1.2.3` will be made available as version `1.2.3`.
+
+No verification is performed to check if the repo actually contains Terraform
+modules. This is left for Terraform to determine.
 
 Environment variables:
 - `GITHUB_TOKEN`: auth token for the GitHub API
@@ -132,18 +141,19 @@ Update *openssl.conf* with your desired `[alternate_names]` and run
 ### Run registry locally
 
 ```
-$ export LISTEN_ADDR=:8080 AUTH_DISABLED=true
-$ export GIT_HUB_ORG_NAME=myorg GIT_HUB_TOKEN=mytoken
-$ export TLS_ENABLED=true TLS_CERT_FILE=cert.crt TLS_KEY_FILE=cert.key
-$ make run
+$ make build
+$ export GITHUB_TOKEN=mytoken
+$ ./terraform-registry -listen-addr=:8080 -auth-disabled=true \
+    -tls-enabled=true -tls-cert-file=cert.crt -tls-key-file=cert.key \
+    -store=github -github-owner-filter=myuserororg -github-topic-filter=terraform-module
 ```
 
-Now use `localhost.localdomain` as the registry URL for your module sources
+Now use `localhost.localdomain:8080` as the registry URL for your module sources
 in Terraform
 
 ```terraform
 module "foo" {
-  source  = "localhost.localdomain:8080/myorg/my-terraform-module-repo/generic//my-module"
+  source  = "localhost.localdomain:8080/myuserororg/my-module-repo/generic//my-module"
   version = "~> 2.0"
 }
 ```
