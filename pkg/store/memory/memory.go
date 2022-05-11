@@ -12,6 +12,8 @@ import (
 	"github.com/nrkno/terraform-registry/pkg/core"
 )
 
+// MemoryStore is an in-memory store implementation without a backend.
+// Should not be instantiated directly. Use `NewMemoryStore` instead.
 type MemoryStore struct {
 	store map[string][]*core.ModuleVersion
 	mut   sync.RWMutex
@@ -23,6 +25,7 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
+// Get returns a pointer to an item by key, or `nil` if it's not found.
 func (s *MemoryStore) Get(key string) []*core.ModuleVersion {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
@@ -34,12 +37,14 @@ func (s *MemoryStore) Get(key string) []*core.ModuleVersion {
 	return m
 }
 
+// Set stores an item under the specified `key`.
 func (s *MemoryStore) Set(key string, m []*core.ModuleVersion) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	s.store[key] = m
 }
 
+// ListModuleVersions returns a list of module versions.
 func (s *MemoryStore) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*core.ModuleVersion, error) {
 	key := fmt.Sprintf("%s/%s/%s", namespace, name, provider)
 	versions := s.Get(key)
@@ -50,6 +55,7 @@ func (s *MemoryStore) ListModuleVersions(ctx context.Context, namespace, name, p
 	return versions, nil
 }
 
+// GetModuleVersion returns single module version.
 func (s *MemoryStore) GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*core.ModuleVersion, error) {
 	key := fmt.Sprintf("%s/%s/%s", namespace, name, provider)
 	versions := s.Get(key)
