@@ -69,7 +69,7 @@ func main() {
 		log.Println("warning: HTTP authentication disabled")
 	}
 
-	// Configure the chosen registry type
+	// Configure the chosen store type
 	switch storeType {
 	case "github":
 		gitHubRegistry(reg)
@@ -95,7 +95,7 @@ func main() {
 	}
 }
 
-// Configure the registry to use GitHub as a module backend.
+// gitHubRegistry configures the registry to use GitHubStore.
 func gitHubRegistry(reg *registry.Registry) {
 	if gitHubToken == "" {
 		log.Fatalf("env var not set: GITHUB_TOKEN")
@@ -132,7 +132,7 @@ func gitHubRegistry(reg *registry.Registry) {
 	}()
 }
 
-// LoadAuthTokens loads valid auth tokens from the configured `app.AuthTokenFile`.
+// parseAuthTokensFile returns a slice of all non-empty strings found in the `filepath`.
 func parseAuthTokensFile(filepath string) ([]string, error) {
 	var tokens []string
 

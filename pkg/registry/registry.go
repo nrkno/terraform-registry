@@ -20,6 +20,8 @@ var (
 	WelcomeMessage = []byte("Terraform Registry\nhttps://github.com/nrkno/terraform-registry\n")
 )
 
+// Registry implements the Terraform HTTP registry protocol.
+// Should not be instantiated directly. Use `NewRegistry` instead.
 type Registry struct {
 	// Whether to disable auth
 	IsAuthDisabled bool
@@ -55,7 +57,7 @@ func (reg *Registry) SetAuthTokens(authTokens []string) {
 	reg.authTokens = authTokens
 }
 
-// Initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
+// setupRoutes initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
 func (reg *Registry) setupRoutes() {
 	reg.router = chi.NewRouter()
 	reg.router.Use(middleware.Logger)
