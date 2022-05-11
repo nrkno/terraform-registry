@@ -16,7 +16,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// GitHubStore should not be used directly. Use `NewGitHubStore` instead.
+// GitHubStore is a store implementation using GitHub as a backend.
+// Should not be instantiated directly. Use `NewGitHubStore` instead.
 type GitHubStore struct {
 	// Org to filter repositories by. Leave empty for all.
 	ownerFilter string
@@ -42,10 +43,7 @@ func NewGitHubStore(ownerFilter, topicFilter, accessToken string) *GitHubStore {
 	}
 }
 
-// loadRepositories fetches the repositories matching the filters and caches them.
-// This method should be run on regular intervals to keep the database updated,
-// but not so often that we hit rate limits. This will, of course, depend on the
-// amount of repositories matching the filters.
+// ListModuleVersions returns a list of module versions.
 func (s *GitHubStore) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*core.ModuleVersion, error) {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
@@ -58,6 +56,7 @@ func (s *GitHubStore) ListModuleVersions(ctx context.Context, namespace, name, p
 	return versions, nil
 }
 
+// GetModuleVersion returns single module version.
 func (s *GitHubStore) GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*core.ModuleVersion, error) {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
@@ -76,7 +75,9 @@ func (s *GitHubStore) GetModuleVersion(ctx context.Context, namespace, name, pro
 	return nil, fmt.Errorf("version '%s' not found for module '%s/%s/%s'", version, namespace, name, provider)
 }
 
-// ReloadCache reloads the cache of module versions. Should be called at least once per instance.
+// ReloadCache queries the GitHub API and reloads the local cache of module versions.
+// Should be called at least once after initialisation and proably on regular
+// intervals afterwards to keep cache up-to-date.
 func (s *GitHubStore) ReloadCache(ctx context.Context) error {
 	repos, err := s.searchRepositories(ctx)
 	if err != nil {
@@ -124,7 +125,7 @@ func (s *GitHubStore) ReloadCache(ctx context.Context) error {
 	return nil
 }
 
-// listAllRepoTags lists all tags for for the specified repository.
+// listAllRepoTags lists all tags for the specified repository.
 // When an error is returned, the tags fetched up until the point of error
 // is also returned.
 func (s *GitHubStore) listAllRepoTags(ctx context.Context, owner, repo string) ([]*github.RepositoryTag, error) {
