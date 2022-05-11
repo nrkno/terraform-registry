@@ -8,7 +8,7 @@ RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/
     && chmod +x /usr/local/bin/dumb-init
 
 WORKDIR /go/src/app
-ADD . /go/src/app
+COPY . /go/src/app
 
 RUN go get -d -v ./...
 RUN make test build
