@@ -74,8 +74,8 @@ Command line arguments:
 
 Terraform does not allow disabling TLS certificate verification when accessing
 a registry. Unless you have a valid certificate (signed by a valid CA) for your
-hostname you will have to patch and build Terraform from source to disable the
-TLS certificate validation.
+hostname, you will have to patch and build Terraform from source to disable the
+TLS certificate verification.
 
 ### Build Terraform
 
