@@ -6,13 +6,17 @@ SPDX-License-Identifier: GPL-3.0-only
 
 # Terraform Registry
 
-An implementation of a private Terraform registry.
+This is an implementation of the Terraform registry protocol used to host a
+private Terraform registry.
 
-**NOTE:** the APIs of this app is not currently considered stable and may
-change without notice before hitting v1.0.
+**NOTE:** the APIs of this program and its library are not currently considered
+stable and may change at any time before v1.0 is reached.
 
-**NOTE:** please question and report issues you might have with this implementation.
-There is surely a lot of room for improvement.
+Please question and report any issues you encounter with this implementation.
+There is surely room for improvement.
+
+Third-party provider registries are supported only in Terraform CLI v0.13 and
+later. Prior versions do not support this protocol.
 
 ## Features
 
@@ -22,12 +26,22 @@ Supported Terraform protocols:
 - [ ] providers.v1
 
 Supported backends:
-- `MemoryStore`: a dumb in-memory store currently used for testing
+- `MemoryStore`: a dumb in-memory store currently only used for testing
 - [`GitHubStore`](#github-store): queries the GitHub API for modules, version tags and SSH download URLs
 
 ## Running
 
-All registry store types share some configuration in common.
+Build and run
+
+```
+$ make build
+$ ./terraform-registry
+```
+
+## Configuring
+
+All registry store types have some core options in common in addition to their
+store specific ones.
 
 Command line arguments:
 - `-listen-addr`: HTTP server bind address (default: `:8080`)
@@ -64,7 +78,6 @@ in the next subsections.
 
 This store uses GitHub as a backend. A query for the module address
 `namespace/name/provider` will return the GitHub repository `namespace/name`.
-
 The `provider` part of the module URL must always be set to `generic` since
 this store implementation has no notion of the type of providers the modules
 are designed for.
@@ -103,7 +116,7 @@ will require the committer to edit the commits and/or their messages.
 Terraform does not allow disabling TLS certificate verification when accessing
 a registry. Unless you have a valid certificate (signed by a valid CA) for your
 hostname, you will have to patch and build Terraform from source to disable the
-TLS certificate verification.
+verification.
 
 #### Build Terraform
 
@@ -116,7 +129,7 @@ on linux_amd6
 $ git clone https://github.com/hashicorp/terraform --ref=v1.1.9 --depth=1
 ```
 
-Apply the patch
+Apply the patch to the cloned repository
 
 
 ```diff
@@ -182,7 +195,7 @@ in Terraform
 ```terraform
 module "foo" {
   source  = "localhost.localdomain:8080/myuserororg/my-module-repo/generic//my-module"
-  version = "~> 2.0"
+  version = "~> 1.2.3"
 }
 ```
 
@@ -194,9 +207,10 @@ $ make test
 
 #### Adding license information
 
-This adds or updates licensing information of all relevant files in the respository
-using [reuse](https://git.fsfe.org/reuse/tool#install). It is available in some package
-managers and in The Python Package Index as `reuse` (`pip install reuse`).
+This adds or updates licensing information of all relevant files in the
+respository using [reuse](https://git.fsfe.org/reuse/tool#install).
+It is available in some package managers and in The Python Package Index
+as `reuse` (`pip install reuse`).
 
 ```
 $ make reuse
