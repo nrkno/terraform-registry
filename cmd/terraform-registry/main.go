@@ -106,11 +106,8 @@ func gitHubRegistry(reg *registry.Registry) {
 	if gitHubToken == "" {
 		log.Fatalf("env var not set: GITHUB_TOKEN")
 	}
-	if gitHubOwnerFilter == "" {
-		log.Fatalf("arg not set: -github-owner-filter")
-	}
-	if gitHubTopicFilter == "" {
-		log.Fatalf("arg not set: -github-topic-filter")
+	if gitHubOwnerFilter == "" && gitHubTopicFilter == "" {
+		log.Fatalf("at least one of -github-owner-filter and -github-topic-filter must be set")
 	}
 
 	store := github.NewGitHubStore(gitHubOwnerFilter, gitHubTopicFilter, gitHubToken)
