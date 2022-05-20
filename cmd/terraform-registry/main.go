@@ -50,6 +50,11 @@ func main() {
 	flag.Parse()
 	log.Default().SetFlags(log.Lshortfile)
 
+	if len(os.Args[1:]) == 0 {
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
 	reg := registry.NewRegistry()
 	reg.IsAuthDisabled = authDisabled
 	reg.AuthTokenFile = authTokensFile
