@@ -32,10 +32,23 @@ All registry store types share some configuration in common.
 Command line arguments:
 - `-listen-addr`: HTTP server bind address (default: `:8080`)
 - `-auth-disabled`: Disable HTTP bearer token authentication (default: `false`)
-- `-auth-tokens-file`: File containing newline separated strings of valid tokens
+- `-auth-tokens-file`: File containing tokens. See below for details.
 - `-tls-enabled`: Whether to enable TLS termination (default: `false`)
 - `-tls-cert-file`: Path to TLS certificate file
 - `-tls-key-file`: Path to TLS certificate private key file
+
+### The tokens file
+
+The tokens file can be in one of two formats. It can be a json file, in which case the filename must end with `.json'.
+If it is not a json file, it is expected to be a file with newline separated strings of valid tokens.
+
+The json file must be a map of key names and token, for example
+```json
+{
+  "token for myapp": "some token",
+  "token for my other app": "some other token"
+}
+```
 
 Build and run
 
@@ -98,11 +111,11 @@ index bb06beb..5f9e424 100644
 +++ b/internal/httpclient/client.go
 @@ -1,6 +1,7 @@
  package httpclient
- 
+
  import (
 +       "crypto/tls"
         "net/http"
- 
+
         cleanhttp "github.com/hashicorp/go-cleanhttp"
 @@ -10,9 +11,14 @@ import (
  // package that will also send a Terraform User-Agent string.
