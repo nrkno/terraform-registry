@@ -1,0 +1,11 @@
+version: 2
+updates:
+- package-ecosystem: go
+  directory: "/"
+  schedule:
+    interval: daily
+    time: "08:00"
+    timezone: "Europe/Oslo"
+  open-pull-requests-limit: 5
+  reviewers:
+  - nrkno/iac-admins
