@@ -57,7 +57,6 @@ func main() {
 
 	reg := registry.NewRegistry()
 	reg.IsAuthDisabled = authDisabled
-	reg.AuthTokenFile = authTokensFile
 
 	if !reg.IsAuthDisabled {
 		tokens, err := parseAuthTokensFile(authTokensFile)
