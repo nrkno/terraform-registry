@@ -25,8 +25,6 @@ var (
 type Registry struct {
 	// Whether to disable auth
 	IsAuthDisabled bool
-	// File containing newline separated strings with valid auth tokens
-	AuthTokenFile string
 
 	router      *chi.Mux
 	authTokens  []string
@@ -36,7 +34,6 @@ type Registry struct {
 func NewRegistry() *Registry {
 	reg := &Registry{
 		IsAuthDisabled: false,
-		AuthTokenFile:  "",
 	}
 	reg.setupRoutes()
 	return reg
