@@ -143,7 +143,7 @@ func parseAuthTokensFile(filepath string) ([]string, error) {
 	}
 	if strings.HasSuffix(filepath, ".json") {
 		tokenmap := make(map[string]string)
-		err = json.Unmarshal([]byte(b), &tokenmap)
+		err = json.Unmarshal(b, &tokenmap)
 		if err != nil {
 			return tokens, err
 		}
