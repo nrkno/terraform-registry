@@ -40,9 +40,9 @@ Command line arguments:
 ### The tokens file
 
 The tokens file can be in one of two formats. It can be a JSON file, in which case the filename must end with `.json`.
-If it is not a json file, it is expected to be a file with newline separated strings of valid tokens.
+If it is not a JSON file, it is expected to be a file with newline separated strings of valid tokens.
 
-The json file must be a map of key names and token, for example
+The JSON file must be a map of key names and token, for example
 ```json
 {
   "description for some token": "some token",
