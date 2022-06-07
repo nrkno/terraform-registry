@@ -45,8 +45,8 @@ If it is not a json file, it is expected to be a file with newline separated str
 The json file must be a map of key names and token, for example
 ```json
 {
-  "token for myapp": "some token",
-  "token for my other app": "some other token"
+  "description for some token": "some token",
+  "description for some other token": "some other token"
 }
 ```
 
