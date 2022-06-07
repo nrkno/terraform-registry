@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"log"
 	"net/http"
@@ -140,11 +141,21 @@ func parseAuthTokensFile(filepath string) ([]string, error) {
 	if err != nil {
 		return tokens, err
 	}
-
-	lines := strings.Split(string(b), "\n")
-	for _, token := range lines {
-		if token = strings.TrimSpace(token); token != "" {
+	if strings.HasSuffix(filepath, ".json") {
+		tokenmap := make(map[string]string)
+		err = json.Unmarshal(b, &tokenmap)
+		if err != nil {
+			return tokens, err
+		}
+		for _, token := range tokenmap {
 			tokens = append(tokens, token)
+		}
+	} else {
+		lines := strings.Split(string(b), "\n")
+		for _, token := range lines {
+			if token = strings.TrimSpace(token); token != "" {
+				tokens = append(tokens, token)
+			}
 		}
 	}
 
