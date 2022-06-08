@@ -84,13 +84,28 @@ Command line arguments:
 - `-github-topic-filter`: GitHub topic repository filter
 
 ## Development
+### Commit hygiene
+
+This repository enforces conventional commit messages. Please install and make
+use of the pre-commit git hooks using [`pre-commit`](https://pre-commit.com/).
+
+```
+$ pip install pre-commit
+$ pre-commit install --install-hooks -t commit-msg
+```
+
+Moreover, commits that does more than what is described, does not do what is
+described, or that contains multiple unrelated changes will be rejected, and
+will require the committer to edit the commits and/or their messages.
+
+### Testing the registry locally
 
 Terraform does not allow disabling TLS certificate verification when accessing
 a registry. Unless you have a valid certificate (signed by a valid CA) for your
 hostname, you will have to patch and build Terraform from source to disable the
 TLS certificate verification.
 
-### Build Terraform
+#### Build Terraform
 
 Clone the official repository for the version you are using locally
 
@@ -141,7 +156,7 @@ Then build Terraform
 $ go build .
 ```
 
-### Create a self-signed TLS certificate
+#### Create a self-signed TLS certificate
 
 A script and an OpenSSL config file to create a self-signed certificate is
 included in [./_tools/openssl/](./_tools/openssl/).
@@ -151,7 +166,7 @@ Update *openssl.conf* with your desired `[alternate_names]` and run
 
 <small>(source: <https://stackoverflow.com/a/46100856>)</small>
 
-### Run registry locally
+#### Build and Run
 
 ```
 $ make build
@@ -171,13 +186,13 @@ module "foo" {
 }
 ```
 
-### Testing
+#### Testing
 
 ```
 $ make test
 ```
 
-### Adding license information
+#### Adding license information
 
 This adds or updates licensing information of all relevant files in the respository
 using [reuse](https://git.fsfe.org/reuse/tool#install). It is available in some package
@@ -188,6 +203,7 @@ $ make reuse
 ```
 
 ## References
+
 - <https://www.terraform.io/language/modules/sources>
 - <https://www.terraform.io/internals/login-protocol>
 - <https://www.terraform.io/internals/module-registry-protocol>
