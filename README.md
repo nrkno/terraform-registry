@@ -46,30 +46,20 @@ store specific ones.
 Command line arguments:
 - `-listen-addr`: HTTP server bind address (default: `:8080`)
 - `-auth-disabled`: Disable HTTP bearer token authentication (default: `false`)
-- `-auth-tokens-file`: File containing tokens. See below for details.
+- `-auth-tokens-file`: File containing tokens
+  - If the file has a `.json` file extension its contents is expected to be in
+    the following format:
+    ```json
+    {
+      "description for some token": "some token",
+      "description for some other token": "some other token"
+    }
+    ```
+  - All other file extensions is expected to contain a newline separated list of
+    plain text tokens.
 - `-tls-enabled`: Whether to enable TLS termination (default: `false`)
 - `-tls-cert-file`: Path to TLS certificate file
 - `-tls-key-file`: Path to TLS certificate private key file
-
-### The tokens file
-
-The tokens file can be in one of two formats. It can be a JSON file, in which case the filename must end with `.json`.
-If it is not a JSON file, it is expected to be a file with newline separated strings of valid tokens.
-
-The JSON file must be a map of key names and token, for example
-```json
-{
-  "description for some token": "some token",
-  "description for some other token": "some other token"
-}
-```
-
-Build and run
-
-```
-$ make build
-$ ./terraform-registry
-```
 
 Additionally, depending on the selected store type, some options are described
 in the next subsections.
