@@ -51,7 +51,7 @@ func init() {
 	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
-	flag.StringVar(&storeType, "store", "", "store backend to use (choices: github)")
+	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github)")
 
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
