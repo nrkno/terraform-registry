@@ -86,6 +86,7 @@ func main() {
 	reg := registry.NewRegistry()
 	reg.IsAuthDisabled = authDisabled
 
+	// Configure authentication
 	if !reg.IsAuthDisabled {
 		tokens, err := parseAuthTokensFile(authTokensFile)
 		if err != nil {
