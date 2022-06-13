@@ -46,3 +46,27 @@ func TestParseAuthTokenFileJSON(t *testing.T) {
 	is.Equal(tokens[1], "baz")
 	is.Equal(tokens[2], "foo")
 }
+
+func TestSetEnvironmentFromFileJSON(t *testing.T) {
+	is := is.New(t)
+
+	f, err := os.CreateTemp("", "*.json")
+	is.NoErr(err)
+
+	fmt.Fprintf(f, "{\"var-number-1\": \"value1\", \"var_number_TWO\": \"value2\"}")
+	f.Seek(0, io.SeekStart)
+
+	for _, prefix := range []string{"", "PREFIX_"} {
+		t.Run("using prefix "+prefix, func(t *testing.T) {
+			is := is.New(t)
+
+			t.Setenv("VAR_NUMBER_1", "")
+			t.Setenv("VAR_NUMBER_TWO", "")
+
+			err = setEnvironmentFromJSONFile(prefix, f.Name())
+			is.NoErr(err)
+			is.Equal(os.Getenv(prefix+"VAR_NUMBER_1"), "value1")
+			is.Equal(os.Getenv(prefix+"VAR_NUMBER_TWO"), "value2")
+		})
+	}
+}
