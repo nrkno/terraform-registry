@@ -57,6 +57,14 @@ Command line arguments:
     ```
   - All other file extensions is expected to contain a newline separated list of
     plain text tokens.
+- `-env-json-files`: A list of comma separated filenames pointing to JSON files
+  containing an object whose keys and values will be loaded as environment vars.
+  - All variable names will be converted to uppercase, and `-` will become `_`.
+  - If the filenames are prefixed with `myprefix_:`, the resulting environment
+    variable names from the specific file will be prefixed with `MYPREFIX_`
+    (e.g. `github_:/secret/github.json`).
+  - If a variable name is unable to be converted to a valid format, a warning is
+    logged, but the parsing continues without errors.
 - `-tls-enabled`: Whether to enable TLS termination (default: `false`)
 - `-tls-cert-file`: Path to TLS certificate file
 - `-tls-key-file`: Path to TLS certificate private key file

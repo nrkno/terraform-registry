@@ -8,9 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -22,6 +24,7 @@ var (
 	listenAddr     string
 	authDisabled   bool
 	authTokensFile string
+	envJSONFiles   string
 	tlsEnabled     bool
 	tlsCertFile    string
 	tlsKeyFile     string
@@ -30,18 +33,26 @@ var (
 	gitHubToken       string
 	gitHubOwnerFilter string
 	gitHubTopicFilter string
+
+	// > Environment variable names used by the utilities in the Shell and Utilities
+	// > volume of IEEE Std 1003.1-2001 consist solely of uppercase letters, digits,
+	// > and the '_' (underscore) from the characters defined in Portable Character
+	// > Set and do not begin with a digit. Other characters may be permitted by an
+	// > implementation; applications shall tolerate the presence of such names.
+	// https://pubs.opengroup.org/onlinepubs/000095399/basedefs/xbd_chap08.html
+	patternEnvVarName = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*`)
 )
 
 func init() {
 	flag.StringVar(&listenAddr, "listen-addr", ":8080", "")
 	flag.BoolVar(&authDisabled, "auth-disabled", false, "")
 	flag.StringVar(&authTokensFile, "auth-tokens-file", "", "")
+	flag.StringVar(&envJSONFiles, "env-json-files", "", "List of comma-separated paths to JSON files. Converts the keys to uppercase and replaces all '-' with '_'. Prefix filepaths with 'myprefix:' to use a prefix names of the variables from a specific file.")
 	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
 	flag.StringVar(&storeType, "store", "", "store backend to use (choices: github)")
 
-	gitHubToken = os.Getenv("GITHUB_TOKEN")
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
 }
@@ -54,6 +65,23 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
+	// Load environment from files
+	for _, item := range strings.Split(envJSONFiles, ",") {
+		prefix := ""
+		filename := item
+		// If the filename is prefixed, the prefix must be separated from the filename.
+		if split := strings.SplitN(filename, ":", 2); len(split) == 2 {
+			prefix = split[0]
+			filename = split[1]
+		}
+		if err := setEnvironmentFromJSONFile(prefix, filename); err != nil {
+			log.Fatalf("failed to load environment from file(s): %v", err)
+		}
+	}
+
+	// Load environment variables here!
+	gitHubToken = os.Getenv("GITHUB_TOKEN")
 
 	reg := registry.NewRegistry()
 	reg.IsAuthDisabled = authDisabled
@@ -161,4 +189,31 @@ func parseAuthTokensFile(filepath string) ([]string, error) {
 	}
 
 	return tokens, nil
+}
+
+// setEnvironmentFromJSONFile loads a JSON object from `filename` and updates the
+// runtime environment with keys and values from this object using `os.Setenv`.
+// Keys will be uppercased and `-` (dashes) will be replaced with `_` (underscores).
+func setEnvironmentFromJSONFile(prefix, filename string) error {
+	vars := make(map[string]string)
+	b, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	json.Unmarshal(b, &vars)
+	if err != nil {
+		return fmt.Errorf("while parsing file '%s': %w", filename, err)
+	}
+	for k, v := range vars {
+		k = prefix + k
+		k = strings.ToUpper(k)
+		k = strings.ReplaceAll(k, "-", "_")
+		if !patternEnvVarName.MatchString(k) {
+			log.Printf("warn: env var with key '%s' does not conform to pattern '%s'. skipping!", k, patternEnvVarName)
+			continue
+		}
+		os.Setenv(k, v)
+		log.Printf("info: setting var '%s' from file '%s'", k, filename)
+	}
+	return nil
 }
