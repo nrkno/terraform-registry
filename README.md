@@ -29,6 +29,11 @@ Supported backends:
 - `MemoryStore`: a dumb in-memory store currently only used for testing
 - [`GitHubStore`](#github-store): queries the GitHub API for modules, version tags and SSH download URLs
 
+Authentication:
+- Reads a set of tokens from a file and authenticates requests based on the
+  request's `Authorization: Bearer <token>`
+- Only `/v1/*` routes are protected
+
 ## Running
 
 Build and run
