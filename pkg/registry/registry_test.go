@@ -62,25 +62,21 @@ func TestTokenAuth(t *testing.T) {
 		name   string
 		token  string
 		status int
-		body   string
 	}{
 		{
 			"empty token",
 			"",
 			http.StatusForbidden,
-			"Forbidden\n",
 		},
 		{
 			"invalid token",
 			"foobar",
 			http.StatusForbidden,
-			"Forbidden\n",
 		},
 		{
 			"valid token",
 			"valid",
-			http.StatusOK,
-			string(WelcomeMessage),
+			http.StatusNotFound,
 		},
 	}
 
@@ -88,18 +84,15 @@ func TestTokenAuth(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
 
-			req := httptest.NewRequest("GET", "/", nil)
+			req := httptest.NewRequest("GET", "/v1/", nil)
 			req.Header.Set("Authorization", "Bearer "+tc.token)
 			w := httptest.NewRecorder()
 
 			reg.router.ServeHTTP(w, req)
 
 			resp := w.Result()
-			body, err := io.ReadAll(resp.Body)
-			is.NoErr(err)
-
+			defer resp.Body.Close()
 			is.Equal(resp.StatusCode, tc.status)
-			is.Equal(string(body), tc.body)
 		})
 	}
 }
