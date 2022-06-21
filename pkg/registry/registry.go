@@ -58,14 +58,18 @@ func (reg *Registry) SetAuthTokens(authTokens []string) {
 func (reg *Registry) setupRoutes() {
 	reg.router = chi.NewRouter()
 	reg.router.Use(middleware.Logger)
-	reg.router.Use(reg.TokenAuth)
 	reg.router.NotFound(reg.NotFound())
 	reg.router.MethodNotAllowed(reg.MethodNotAllowed())
 	reg.router.Get("/", reg.Index())
 	reg.router.Get("/health", reg.Health())
 	reg.router.Get("/.well-known/terraform.json", reg.ServiceDiscovery())
-	reg.router.Get("/v1/modules/{namespace}/{name}/{provider}/versions", reg.ModuleVersions())
-	reg.router.Get("/v1/modules/{namespace}/{name}/{provider}/{version}/download", reg.ModuleDownload())
+
+	// Only API routes are protected with authentication
+	reg.router.Route("/v1", func(r chi.Router) {
+		r.Use(reg.TokenAuth)
+		r.Get("/modules/{namespace}/{name}/{provider}/versions", reg.ModuleVersions())
+		r.Get("/modules/{namespace}/{name}/{provider}/{version}/download", reg.ModuleDownload())
+	})
 }
 
 func (reg *Registry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
