@@ -113,10 +113,22 @@ func (reg *Registry) Index() http.HandlerFunc {
 	}
 }
 
+type HealthResponse struct {
+	Status string `json:"status"`
+}
+
+// Health is the endpoint to be checked to know the runtime health of the registry.
+// In its current implementation it will always report as healthy, i.e. it only
+// reports that the HTTP server still handles requests.
 func (reg *Registry) Health() http.HandlerFunc {
-	resp := []byte("OK")
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write(resp); err != nil {
+		resp := HealthResponse{
+			Status: "OK",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(resp); err != nil {
 			log.Printf("error: Health: %v", err)
 		}
 	}
