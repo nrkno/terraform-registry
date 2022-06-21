@@ -104,6 +104,54 @@ func TestTokenAuth(t *testing.T) {
 	}
 }
 
+func TestHealth(t *testing.T) {
+	is := is.New(t)
+
+	mstore := memstore.NewMemoryStore()
+	reg := Registry{
+		IsAuthDisabled: true,
+		moduleStore:    mstore,
+	}
+	reg.setupRoutes()
+
+	testcases := []struct {
+		name       string
+		statusCode int
+		health     HealthResponse
+	}{
+		{
+			"healthy",
+			http.StatusOK,
+			HealthResponse{
+				Status: "OK",
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+
+			req := httptest.NewRequest("GET", "/health", nil)
+			w := httptest.NewRecorder()
+
+			reg.router.ServeHTTP(w, req)
+
+			resp := w.Result()
+			body, err := io.ReadAll(resp.Body)
+			is.NoErr(err)
+			is.Equal(resp.StatusCode, tc.statusCode)
+			is.Equal(resp.Header.Get("Content-Type"), "application/json")
+
+			var respObj HealthResponse
+			err = json.Unmarshal(body, &respObj)
+			is.NoErr(err)
+
+			is.Equal(respObj, tc.health)
+		})
+	}
+}
+
 func TestListModuleVersions(t *testing.T) {
 	is := is.New(t)
 
