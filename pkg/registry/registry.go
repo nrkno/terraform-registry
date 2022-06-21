@@ -59,6 +59,8 @@ func (reg *Registry) setupRoutes() {
 	reg.router = chi.NewRouter()
 	reg.router.Use(middleware.Logger)
 	reg.router.Use(reg.TokenAuth)
+	reg.router.NotFound(reg.NotFound())
+	reg.router.MethodNotAllowed(reg.MethodNotAllowed())
 	reg.router.Get("/", reg.Index())
 	reg.router.Get("/health", reg.Health())
 	reg.router.Get("/.well-known/terraform.json", reg.ServiceDiscovery())
@@ -103,6 +105,18 @@ func (reg *Registry) TokenAuth(next http.Handler) http.Handler {
 
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	})
+}
+
+func (reg *Registry) NotFound() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	}
+}
+
+func (reg *Registry) MethodNotAllowed() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
 }
 
 func (reg *Registry) Index() http.HandlerFunc {
