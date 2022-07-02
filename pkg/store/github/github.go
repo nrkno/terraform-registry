@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/google/go-github/v43/github"
+	goversion "github.com/hashicorp/go-version"
 	"github.com/nrkno/terraform-registry/pkg/core"
 	"golang.org/x/oauth2"
 )
@@ -103,11 +104,14 @@ func (s *GitHubStore) ReloadCache(ctx context.Context) error {
 			return err
 		}
 
-		versions := make([]*core.ModuleVersion, len(tags))
-		for i, tag := range tags {
-			versions[i] = &core.ModuleVersion{
-				Version:   strings.TrimPrefix(tag.GetName(), "v"), // Terraform uses SemVer names without 'v' prefix
-				SourceURL: fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", owner, name, tag.GetName()),
+		versions := make([]*core.ModuleVersion, 0)
+		for _, tag := range tags {
+			version := strings.TrimPrefix(tag.GetName(), "v") // Terraform uses SemVer names without 'v' prefix
+			if _, err := goversion.NewSemver(version); err == nil {
+				versions = append(versions, &core.ModuleVersion{
+					Version:   version,
+					SourceURL: fmt.Sprintf("git::ssh://git@github.com/%s/%s.git?ref=%s", owner, name, tag.GetName()),
+				})
 			}
 		}
 

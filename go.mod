@@ -9,6 +9,7 @@ go 1.18
 require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/google/go-github/v43 v43.0.0
+	github.com/hashicorp/go-version v1.6.0
 	github.com/matryer/is v1.4.0
 	github.com/migueleliasweb/go-github-mock v0.0.8
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
