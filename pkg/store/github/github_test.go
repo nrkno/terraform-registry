@@ -158,6 +158,9 @@ func TestListModuleVersions(t *testing.T) {
 				{
 					Name: github.String("v2.0.0"),
 				},
+				{
+					Name: github.String("non-semver"),
+				},
 			},
 		),
 	)
