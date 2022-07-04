@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/nrkno/terraform-registry/pkg/registry"
 	"github.com/nrkno/terraform-registry/pkg/store/github"
+	"go.uber.org/zap"
 )
 
 var (
@@ -41,6 +41,8 @@ var (
 	// > implementation; applications shall tolerate the presence of such names.
 	// https://pubs.opengroup.org/onlinepubs/000095399/basedefs/xbd_chap08.html
 	patternEnvVarName = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*`)
+
+	logger *zap.Logger = zap.NewNop()
 )
 
 func init() {
@@ -55,16 +57,25 @@ func init() {
 
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
+
 }
 
 func main() {
 	flag.Parse()
-	log.Default().SetFlags(log.Lshortfile)
 
 	if len(os.Args[1:]) == 0 {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
+	// Configure logging
+	logConfig := zap.NewProductionConfig()
+	logConfig.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+	logger, err = logConfig.Build()
+	if err != nil {
+		panic(err)
+	}
+	defer logger.Sync()
 
 	// Load environment from files
 	for _, item := range strings.Split(envJSONFiles, ",") {
@@ -76,31 +87,36 @@ func main() {
 			filename = split[1]
 		}
 		if err := setEnvironmentFromJSONFile(prefix, filename); err != nil {
-			log.Fatalf("failed to load environment from file(s): %v", err)
+			logger.Fatal("failed to load environment from file(s)",
+				zap.Errors("err", []error{err}),
+			)
 		}
 	}
 
 	// Load environment variables here!
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
 
-	reg := registry.NewRegistry()
+	reg := registry.NewRegistry(logger)
 	reg.IsAuthDisabled = authDisabled
 
 	// Configure authentication
 	if !reg.IsAuthDisabled {
 		tokens, err := parseAuthTokensFile(authTokensFile)
 		if err != nil {
-			log.Fatalf("error: failed to load auth tokens: %v", err)
+			logger.Fatal("failed to load auth tokens",
+				zap.Errors("err", []error{err}),
+			)
 		}
 		if len(tokens) == 0 {
-			log.Fatalf("error: no tokens found in auth token file")
+			// TODO: should not be a fatal error, but a warning is helpful
+			logger.Panic("no tokens found in auth token file")
 		}
 		reg.SetAuthTokens(tokens)
 
-		log.Println("info: HTTP authentication enabled")
-		log.Printf("info: loaded %d auth tokens", len(tokens))
+		logger.Info("authentication enabled")
+		logger.Info("loaded auth tokens", zap.Int("count", len(tokens)))
 	} else {
-		log.Println("warning: HTTP authentication disabled")
+		logger.Warn("authentication disabled")
 	}
 
 	// Configure the chosen store type
@@ -108,7 +124,7 @@ func main() {
 	case "github":
 		gitHubRegistry(reg)
 	default:
-		log.Fatalln("error: invalid store type")
+		logger.Fatal("invalid store type", zap.String("selected", storeType))
 	}
 
 	srv := http.Server{
@@ -120,31 +136,40 @@ func main() {
 		IdleTimeout:       60 * time.Second, // keep-alive timeout
 	}
 
+	logger.Info("starting HTTP server",
+		zap.Bool("tls", tlsEnabled),
+		zap.String("listenAddr", listenAddr),
+	)
 	if tlsEnabled {
-		log.Printf("info: Starting HTTP server (TLS enabled), listening on %s", listenAddr)
-		log.Fatalf("error: %v", srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile))
+		logger.Panic("ListenAndServe",
+			zap.Errors("err", []error{srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile)}),
+		)
 	} else {
-		log.Printf("info: Starting HTTP server (TLS disabled), listening on %s", listenAddr)
-		log.Fatalf("error: %v", srv.ListenAndServe())
+		logger.Panic("ListenAndServe",
+			zap.Errors("err", []error{srv.ListenAndServe()}),
+		)
 	}
 }
 
 // gitHubRegistry configures the registry to use GitHubStore.
 func gitHubRegistry(reg *registry.Registry) {
 	if gitHubToken == "" {
-		log.Fatalf("env var not set: GITHUB_TOKEN")
+		logger.Fatal("missing environment var GITHUB_TOKEN")
 	}
 	if gitHubOwnerFilter == "" && gitHubTopicFilter == "" {
-		log.Fatalf("at least one of -github-owner-filter and -github-topic-filter must be set")
+		logger.Fatal("at least one of -github-owner-filter and -github-topic-filter must be set")
 	}
 
-	store := github.NewGitHubStore(gitHubOwnerFilter, gitHubTopicFilter, gitHubToken)
+	store := github.NewGitHubStore(gitHubOwnerFilter, gitHubTopicFilter, gitHubToken, logger.Named("github store"))
 	reg.SetModuleStore(store)
 
 	// Fill store cache initially
-	log.Println("info: loading GitHub store cache")
+	logger.Debug("loading GitHub store cache")
 	if err := store.ReloadCache(context.Background()); err != nil {
-		log.Fatalf("error: failed to load store cache: %v", err)
+		// TODO: should is not necessarily a fatal error.
+		logger.Panic("failed to load GitHub store cache",
+			zap.Errors("err", []error{err}),
+		)
 	}
 
 	// Reload store cache on regular intervals
@@ -154,9 +179,11 @@ func gitHubRegistry(reg *registry.Registry) {
 		<-t.C // ignore the first tick
 
 		for {
-			log.Println("info: reloading store cache")
+			logger.Debug("reloading GitHub store cache")
 			if err := store.ReloadCache(context.Background()); err != nil {
-				log.Printf("error: failed to load store cache: %v", err)
+				logger.Error("failed to reload GitHub store cache",
+					zap.Errors("err", []error{err}),
+				)
 			}
 			<-t.C
 		}
@@ -210,11 +237,17 @@ func setEnvironmentFromJSONFile(prefix, filename string) error {
 		k = strings.ToUpper(k)
 		k = strings.ReplaceAll(k, "-", "_")
 		if !patternEnvVarName.MatchString(k) {
-			log.Printf("warn: env var with key '%s' does not conform to pattern '%s'. skipping!", k, patternEnvVarName)
+			logger.Warn("unexpected environment variable name format",
+				zap.String("expected pattern", patternEnvVarName.String()),
+				zap.String("name", k),
+			)
 			continue
 		}
 		os.Setenv(k, v)
-		log.Printf("info: setting var '%s' from file '%s'", k, filename)
+		logger.Info("environment variable set from file",
+			zap.String("name", k),
+			zap.String("file", filename),
+		)
 	}
 	return nil
 }

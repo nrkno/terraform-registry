@@ -19,6 +19,7 @@ import (
 	"github.com/matryer/is"
 	"github.com/nrkno/terraform-registry/pkg/core"
 	memstore "github.com/nrkno/terraform-registry/pkg/store/memory"
+	"go.uber.org/zap"
 )
 
 func verifyServiceDiscovery(t *testing.T, resp *http.Response) {
@@ -46,6 +47,7 @@ func TestServiceDiscovery(t *testing.T) {
 
 	reg := Registry{
 		IsAuthDisabled: true,
+		logger:         zap.NewNop(),
 	}
 	reg.setupRoutes()
 	reg.router.ServeHTTP(w, req)
@@ -80,6 +82,7 @@ func FuzzTokenAuth(f *testing.F) {
 			authTokens: []string{
 				authToken,
 			},
+			logger: zap.NewNop(),
 		}
 		reg.setupRoutes()
 
@@ -121,6 +124,7 @@ func TestHealth(t *testing.T) {
 	reg := Registry{
 		IsAuthDisabled: true,
 		moduleStore:    mstore,
+		logger:         zap.NewNop(),
 	}
 	reg.setupRoutes()
 
@@ -191,6 +195,7 @@ func TestListModuleVersions(t *testing.T) {
 	reg := Registry{
 		IsAuthDisabled: true,
 		moduleStore:    mstore,
+		logger:         zap.NewNop(),
 	}
 	reg.setupRoutes()
 
@@ -263,6 +268,7 @@ func TestModuleDownload(t *testing.T) {
 	reg := Registry{
 		IsAuthDisabled: true,
 		moduleStore:    mstore,
+		logger:         zap.NewNop(),
 	}
 	reg.setupRoutes()
 
@@ -311,6 +317,7 @@ func setupTestRegistry() *Registry {
 	reg := &Registry{
 		IsAuthDisabled: false,
 		moduleStore:    mstore,
+		logger:         zap.NewNop(),
 	}
 	reg.setupRoutes()
 
