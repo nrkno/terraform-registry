@@ -19,9 +19,11 @@ jobs:
         uses: actions/checkout@v3
       -
         name: Docker build
+        env:
+          DOCKER_TAG: terraform-registry:latest
         run: |
-          docker build -t terraform-registry:latest .
-          docker image save terraform-registry:latest -o image.tar
+          make DOCKER_TAG="${DOCKER_TAG}" build-docker
+          docker image save ${DOCKER_TAG} -o image.tar
       -
         name: Trivy vulnerability scan
         uses: aquasecurity/trivy-action@master
