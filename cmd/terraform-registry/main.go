@@ -174,8 +174,7 @@ func gitHubRegistry(reg *registry.Registry) {
 	// Fill store cache initially
 	logger.Debug("loading GitHub store cache")
 	if err := store.ReloadCache(context.Background()); err != nil {
-		// TODO: should is not necessarily a fatal error.
-		logger.Panic("failed to load GitHub store cache",
+		logger.Error("failed to load GitHub store cache",
 			zap.Errors("err", []error{err}),
 		)
 	}
