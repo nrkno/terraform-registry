@@ -29,6 +29,8 @@ var (
 	tlsCertFile    string
 	tlsKeyFile     string
 	storeType      string
+	logLevelStr    string
+	logFormatStr   string
 
 	gitHubToken       string
 	gitHubOwnerFilter string
@@ -54,6 +56,8 @@ func init() {
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
 	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github)")
+	flag.StringVar(&logLevelStr, "log-level", "info", "Levels: debug, info, warn, error")
+	flag.StringVar(&logFormatStr, "log-format", "console", "Formats: json, console")
 
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
@@ -70,10 +74,15 @@ func main() {
 
 	// Configure logging
 	logConfig := zap.NewProductionConfig()
-	logConfig.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+	logLevel, err := zap.ParseAtomicLevel(logLevelStr)
+	if err != nil {
+		panic(fmt.Sprintf("zap logger: %v", err))
+	}
+	logConfig.Level = logLevel
+	logConfig.Encoding = logFormatStr
 	logger, err = logConfig.Build()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("zap logger: %v", err))
 	}
 	defer logger.Sync()
 

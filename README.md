@@ -73,6 +73,8 @@ Command line arguments:
 - `-tls-enabled`: Whether to enable TLS termination (default: `false`)
 - `-tls-cert-file`: Path to TLS certificate file
 - `-tls-key-file`: Path to TLS certificate private key file
+- `-log-level`: Log level selection: `debug`, `info`, `warn`, `error` (default: `info`)
+- `-log-format`: Log output format selection: `json`, `console` (default: `console`)
 
 Additionally, depending on the selected store type, some options are described
 in the next subsections.
