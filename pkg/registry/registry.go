@@ -91,11 +91,17 @@ func (reg *Registry) TokenAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		// TODO: first check if auth header actually is present, and log it!
-		auth := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+		header := r.Header.Get("Authorization")
+		if header == "" {
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			reg.logger.Debug("TokenAuth: Authorization header missing or empty")
+			return
+		}
+
+		auth := strings.SplitN(header, " ", 2)
 		if len(auth) != 2 {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-			reg.logger.Debug("TokenAuth: invalid or missing Authorization header")
+			reg.logger.Debug("TokenAuth: Authorization header present, but invalid")
 			return
 		}
 
