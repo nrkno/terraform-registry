@@ -7,13 +7,13 @@ package github
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 
 	"github.com/google/go-github/v43/github"
 	goversion "github.com/hashicorp/go-version"
 	"github.com/nrkno/terraform-registry/pkg/core"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
@@ -28,19 +28,26 @@ type GitHubStore struct {
 	client *github.Client
 	cache  map[string][]*core.ModuleVersion
 	mut    sync.RWMutex
+
+	logger *zap.Logger
 }
 
-func NewGitHubStore(ownerFilter, topicFilter, accessToken string) *GitHubStore {
+func NewGitHubStore(ownerFilter, topicFilter, accessToken string, logger *zap.Logger) *GitHubStore {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: accessToken},
 	)
 	c := oauth2.NewClient(context.TODO(), ts)
+
+	if logger == nil {
+		logger = zap.NewNop()
+	}
 
 	return &GitHubStore{
 		ownerFilter: ownerFilter,
 		topicFilter: topicFilter,
 		client:      github.NewClient(c),
 		cache:       make(map[string][]*core.ModuleVersion),
+		logger:      logger,
 	}
 }
 
@@ -115,7 +122,11 @@ func (s *GitHubStore) ReloadCache(ctx context.Context) error {
 			}
 		}
 
-		log.Printf("debug: added module '%s' with %d versions", key, len(versions))
+		s.logger.Debug("found module",
+			zap.String("name", key),
+			zap.Int("version_count", len(versions)),
+		)
+
 		fresh[key] = versions
 	}
 

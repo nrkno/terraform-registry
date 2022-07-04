@@ -13,6 +13,7 @@ import (
 	"github.com/matryer/is"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/nrkno/terraform-registry/pkg/core"
+	"go.uber.org/zap"
 )
 
 func TestGithubStore(t *testing.T) {
@@ -34,6 +35,7 @@ func TestGithubStore(t *testing.T) {
 			topicFilter: "test-topic",
 			client:      c,
 			cache:       make(map[string][]*core.ModuleVersion),
+			logger:      zap.NewNop(),
 		}
 
 		err := store.ReloadCache(context.Background())
@@ -60,6 +62,7 @@ func TestGithubStore(t *testing.T) {
 			topicFilter: "test-topic",
 			client:      c,
 			cache:       make(map[string][]*core.ModuleVersion),
+			logger:      zap.NewNop(),
 		}
 		store.client = c
 		err := store.ReloadCache(context.Background())
@@ -106,6 +109,7 @@ func TestGetModuleVersion(t *testing.T) {
 		topicFilter: "test-topic",
 		client:      c,
 		cache:       make(map[string][]*core.ModuleVersion),
+		logger:      zap.NewNop(),
 	}
 
 	err := store.ReloadCache(context.Background())
@@ -171,6 +175,7 @@ func TestListModuleVersions(t *testing.T) {
 		topicFilter: "test-topic",
 		client:      c,
 		cache:       make(map[string][]*core.ModuleVersion),
+		logger:      zap.NewNop(),
 	}
 
 	err := store.ReloadCache(context.Background())
