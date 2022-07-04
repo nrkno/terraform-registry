@@ -2,14 +2,15 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-CMD_SOURCE=./cmd/terraform-registry
-BINARY_NAME=./terraform-registry
+BINARY_NAME := ./terraform-registry
+CMD_SOURCE  := ./cmd/terraform-registry
+DOCKER_TAG  := terraform-registry
 
 build:
 	go build -o ${BINARY_NAME} ${CMD_SOURCE}
 
 build-docker:
-	docker build . -t terraform-registry
+	docker build . -t $(DOCKER_TAG)
 
 test:
 	go test ./...
