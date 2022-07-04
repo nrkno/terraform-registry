@@ -7,7 +7,7 @@ CMD_SOURCE  := ./cmd/terraform-registry
 DOCKER_TAG  := terraform-registry
 
 build:
-	go build -o ${BINARY_NAME} ${CMD_SOURCE}
+	go build $(GO_FLAGS) -buildvcs=false -o ${BINARY_NAME} ${CMD_SOURCE}
 
 build-docker:
 	docker build . -t $(DOCKER_TAG)

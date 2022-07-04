@@ -11,7 +11,7 @@ WORKDIR /go/src/app
 COPY . /go/src/app
 
 RUN go get -d -v ./...
-RUN make test build
+RUN make GO_FLAGS="-buildvcs=false" test build
 
 FROM gcr.io/distroless/base-debian11
 COPY --from=build /go/src/app/terraform-registry /bin/
