@@ -20,6 +20,11 @@ jobs:
       -
         name: Docker build
         run: |
+          # Make sure the makefile works as intended.
+          # We should figure out a way to pass args into make, so that we
+          # can set the image name explicitly and not having to run
+          # `docker build` separately.
+          make build-docker
           docker build -t terraform-registry:latest .
           docker image save terraform-registry:latest -o image.tar
       -
