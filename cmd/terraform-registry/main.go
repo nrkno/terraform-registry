@@ -117,8 +117,7 @@ func main() {
 			)
 		}
 		if len(tokens) == 0 {
-			// TODO: should not be a fatal error, but a warning is helpful
-			logger.Panic("no tokens found in auth token file")
+			logger.Warn("no tokens found in auth token file")
 		}
 		reg.SetAuthTokens(tokens)
 
