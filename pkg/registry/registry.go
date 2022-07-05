@@ -6,13 +6,13 @@ package registry
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nrkno/terraform-registry/pkg/core"
+	"go.uber.org/zap"
 )
 
 var (
@@ -29,11 +29,18 @@ type Registry struct {
 	router      *chi.Mux
 	authTokens  []string
 	moduleStore core.ModuleStore
+
+	logger *zap.Logger
 }
 
-func NewRegistry() *Registry {
+func NewRegistry(logger *zap.Logger) *Registry {
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+
 	reg := &Registry{
 		IsAuthDisabled: false,
+		logger:         logger,
 	}
 	reg.setupRoutes()
 	return reg
@@ -84,10 +91,17 @@ func (reg *Registry) TokenAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		auth := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+		header := r.Header.Get("Authorization")
+		if header == "" {
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			reg.logger.Debug("TokenAuth: Authorization header missing or empty")
+			return
+		}
+
+		auth := strings.SplitN(header, " ", 2)
 		if len(auth) != 2 {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-			log.Println("error: TokenAuth: invalid or missing Authorization header.")
+			reg.logger.Debug("TokenAuth: Authorization header present, but invalid")
 			return
 		}
 
@@ -96,7 +110,10 @@ func (reg *Registry) TokenAuth(next http.Handler) http.Handler {
 
 		if tokenType != "Bearer" {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-			log.Printf("error: TokenAuth: Authorization header value not of type 'Bearer', but '%s'.", tokenType)
+			reg.logger.Debug("TokenAuth: unexpected authorization header value prefix",
+				zap.String("actual", tokenType),
+				zap.String("expected", "Bearer"),
+			)
 			return
 		}
 
@@ -126,7 +143,7 @@ func (reg *Registry) MethodNotAllowed() http.HandlerFunc {
 func (reg *Registry) Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(WelcomeMessage); err != nil {
-			log.Printf("error: Index: %v", err)
+			reg.logger.Error("Index", zap.Errors("err", []error{err}))
 		}
 	}
 }
@@ -147,7 +164,7 @@ func (reg *Registry) Health() http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(resp); err != nil {
-			log.Printf("error: Health: %v", err)
+			reg.logger.Error("Health", zap.Errors("err", []error{err}))
 		}
 	}
 }
@@ -182,13 +199,13 @@ func (reg *Registry) ServiceDiscovery() http.HandlerFunc {
 
 	resp, err := json.Marshal(spec)
 	if err != nil {
-		log.Fatalf("error: ServiceDiscovery: %v", err)
+		reg.logger.Panic("ServiceDiscovery", zap.Errors("err", []error{err}))
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write(resp); err != nil {
-			log.Printf("error: ServiceDiscovery: %+v", err)
+			reg.logger.Error("ServiceDiscovery", zap.Errors("err", []error{err}))
 		}
 	}
 }
@@ -218,7 +235,7 @@ func (reg *Registry) ModuleVersions() http.HandlerFunc {
 		versions, err := reg.moduleStore.ListModuleVersions(r.Context(), namespace, name, provider)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			log.Printf("error: ModuleVersions: %v", err)
+			reg.logger.Error("ListModuleVersions", zap.Errors("err", []error{err}))
 			return
 		}
 
@@ -233,12 +250,12 @@ func (reg *Registry) ModuleVersions() http.HandlerFunc {
 
 		b, err := json.Marshal(respObj)
 		if err != nil {
-			log.Printf("error: ModuleVersions: %+v", err)
+			reg.logger.Error("ModuleVersions", zap.Errors("err", []error{err}))
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write(b); err != nil {
-			log.Printf("error: ModuleVersions: %+v", err)
+			reg.logger.Error("ModuleVersions", zap.Errors("err", []error{err}))
 		}
 	}
 }
@@ -257,7 +274,7 @@ func (reg *Registry) ModuleDownload() http.HandlerFunc {
 		ver, err := reg.moduleStore.GetModuleVersion(r.Context(), namespace, name, provider, version)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			log.Printf("error: ModuleDownload: %v", err)
+			reg.logger.Error("GetModuleVersion", zap.Errors("err", []error{err}))
 			return
 		}
 
