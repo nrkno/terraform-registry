@@ -48,53 +48,51 @@ func TestServiceDiscovery(t *testing.T) {
 
 }
 
-func TestTokenAuth(t *testing.T) {
-	is := is.New(t)
-
-	reg := Registry{
-		authTokens: []string{
-			"valid",
-		},
-	}
-	reg.setupRoutes()
-
-	testcases := []struct {
-		name   string
-		token  string
-		status int
+func FuzzTokenAuth(f *testing.F) {
+	seeds := []struct {
+		authToken           string
+		authorizationHeader string
 	}{
 		{
-			"empty token",
-			"",
-			http.StatusForbidden,
-		},
-		{
-			"invalid token",
-			"foobar",
-			http.StatusForbidden,
-		},
-		{
-			"valid token",
 			"valid",
-			http.StatusNotFound,
+			"Bearer valid",
+		},
+		{
+			"valid",
+			"Bearer invalid",
+		},
+		{
+			"valid",
+			"notvalid",
 		},
 	}
-
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			is := is.New(t)
-
-			req := httptest.NewRequest("GET", "/v1/", nil)
-			req.Header.Set("Authorization", "Bearer "+tc.token)
-			w := httptest.NewRecorder()
-
-			reg.router.ServeHTTP(w, req)
-
-			resp := w.Result()
-			defer resp.Body.Close()
-			is.Equal(resp.StatusCode, tc.status)
-		})
+	for _, seed := range seeds {
+		f.Add(seed.authToken, seed.authorizationHeader)
 	}
+	f.Fuzz(func(t *testing.T, authToken string, authorizationHeader string) {
+		reg := Registry{
+			authTokens: []string{
+				authToken,
+			},
+		}
+		reg.setupRoutes()
+
+		is := is.New(t)
+
+		req := httptest.NewRequest("GET", "/v1/", nil)
+		req.Header.Set("Authorization", authorizationHeader)
+		w := httptest.NewRecorder()
+
+		reg.router.ServeHTTP(w, req)
+
+		resp := w.Result()
+		defer resp.Body.Close()
+		if "Bearer "+authToken == authorizationHeader {
+			is.Equal(resp.StatusCode, http.StatusNotFound)
+		} else {
+			is.Equal(resp.StatusCode, http.StatusForbidden)
+		}
+	})
 }
 
 func TestHealth(t *testing.T) {
