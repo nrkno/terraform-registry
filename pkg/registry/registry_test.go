@@ -10,7 +10,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/matryer/is"
@@ -18,19 +20,9 @@ import (
 	memstore "github.com/nrkno/terraform-registry/pkg/store/memory"
 )
 
-func TestServiceDiscovery(t *testing.T) {
+func verifyServiceDiscovery(t *testing.T, resp *http.Response) {
 	is := is.New(t)
 
-	req := httptest.NewRequest("GET", "/.well-known/terraform.json", nil)
-	w := httptest.NewRecorder()
-
-	reg := Registry{
-		IsAuthDisabled: true,
-	}
-	reg.setupRoutes()
-	reg.router.ServeHTTP(w, req)
-
-	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
 
 	is.Equal(resp.StatusCode, 200)
@@ -45,7 +37,20 @@ func TestServiceDiscovery(t *testing.T) {
 		compactJSON.String(),
 		`{"modules.v1":"/v1/modules/","login.v1":{"client":"terraform-cli","grant_types":["authz_code"],"authz":"/oauth/authorization","token":"/oauth/token","ports":[10000,10010]}}`,
 	)
+}
 
+func TestServiceDiscovery(t *testing.T) {
+	req := httptest.NewRequest("GET", "/.well-known/terraform.json", nil)
+	w := httptest.NewRecorder()
+
+	reg := Registry{
+		IsAuthDisabled: true,
+	}
+	reg.setupRoutes()
+	reg.router.ServeHTTP(w, req)
+
+	resp := w.Result()
+	verifyServiceDiscovery(t, resp)
 }
 
 func FuzzTokenAuth(f *testing.F) {
@@ -95,9 +100,22 @@ func FuzzTokenAuth(f *testing.F) {
 	})
 }
 
-func TestHealth(t *testing.T) {
+func verifyHealth(t *testing.T, resp *http.Response, expectedStatus int, expectedResponse HealthResponse) {
 	is := is.New(t)
 
+	body, err := io.ReadAll(resp.Body)
+	is.NoErr(err)
+	is.Equal(resp.StatusCode, expectedStatus)
+	is.Equal(resp.Header.Get("Content-Type"), "application/json")
+
+	var respObj HealthResponse
+	err = json.Unmarshal(body, &respObj)
+	is.NoErr(err)
+
+	is.Equal(respObj, expectedResponse)
+}
+
+func TestHealth(t *testing.T) {
 	mstore := memstore.NewMemoryStore()
 	reg := Registry{
 		IsAuthDisabled: true,
@@ -121,31 +139,41 @@ func TestHealth(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			is := is.New(t)
-
 			req := httptest.NewRequest("GET", "/health", nil)
 			w := httptest.NewRecorder()
 
 			reg.router.ServeHTTP(w, req)
 
 			resp := w.Result()
-			body, err := io.ReadAll(resp.Body)
-			is.NoErr(err)
-			is.Equal(resp.StatusCode, tc.statusCode)
-			is.Equal(resp.Header.Get("Content-Type"), "application/json")
-
-			var respObj HealthResponse
-			err = json.Unmarshal(body, &respObj)
-			is.NoErr(err)
-
-			is.Equal(respObj, tc.health)
+			verifyHealth(t, resp, tc.statusCode, tc.health)
 		})
 	}
 }
 
-func TestListModuleVersions(t *testing.T) {
+func verifyModuleVersions(t *testing.T, resp *http.Response, expectedStatus int, expectedVersion []string) {
 	is := is.New(t)
+	body, err := io.ReadAll(resp.Body)
+	is.NoErr(err)
+	is.Equal(resp.StatusCode, expectedStatus)
 
+	if expectedStatus == http.StatusOK {
+		is.Equal(resp.Header.Get("Content-Type"), "application/json")
+
+		var respObj ModuleVersionsResponse
+		err := json.Unmarshal(body, &respObj)
+		is.NoErr(err)
+
+		var actualVersions []string
+		for _, v := range respObj.Modules[0].Versions {
+			actualVersions = append(actualVersions, v.Version)
+		}
+		sort.Strings(actualVersions)
+
+		is.Equal(actualVersions, expectedVersion)
+	}
+}
+
+func TestListModuleVersions(t *testing.T) {
 	mstore := memstore.NewMemoryStore()
 	mstore.Set("hashicorp/consul/aws", []*core.ModuleVersion{
 		&core.ModuleVersion{
@@ -193,40 +221,28 @@ func TestListModuleVersions(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			is := is.New(t)
-
 			req := httptest.NewRequest("GET", "/v1/modules/"+tc.module+"/versions", nil)
 			w := httptest.NewRecorder()
 
 			reg.router.ServeHTTP(w, req)
 
 			resp := w.Result()
-			body, err := io.ReadAll(resp.Body)
-			is.NoErr(err)
-			is.Equal(resp.StatusCode, tc.status)
-
-			if tc.status == http.StatusOK {
-				is.Equal(resp.Header.Get("Content-Type"), "application/json")
-
-				var respObj ModuleVersionsResponse
-				err := json.Unmarshal(body, &respObj)
-				is.NoErr(err)
-
-				var actualVersions []string
-				for _, v := range respObj.Modules[0].Versions {
-					actualVersions = append(actualVersions, v.Version)
-				}
-				sort.Strings(actualVersions)
-
-				is.Equal(actualVersions, tc.versionsSeen)
-			}
+			verifyModuleVersions(t, resp, tc.status, tc.versionsSeen)
 		})
 	}
 }
 
-func TestModuleDownload(t *testing.T) {
+func verifyDownload(t *testing.T, resp *http.Response, expectedStatus int, expectedURL string) {
 	is := is.New(t)
+	is.Equal(resp.StatusCode, expectedStatus)
+	is.Equal(resp.Header.Get("X-Terraform-Get"), expectedURL) // X-Terraform-Get header
 
+	if expectedStatus == http.StatusOK {
+		is.Equal(resp.Header.Get("Content-Type"), "application/json")
+	}
+}
+
+func TestModuleDownload(t *testing.T) {
 	mstore := memstore.NewMemoryStore()
 	mstore.Set("hashicorp/consul/aws", []*core.ModuleVersion{
 		&core.ModuleVersion{
@@ -271,20 +287,124 @@ func TestModuleDownload(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			is := is.New(t)
-
 			req := httptest.NewRequest("GET", "/v1/modules/"+tc.moduleString+"/download", nil)
 			w := httptest.NewRecorder()
 
 			reg.router.ServeHTTP(w, req)
 
 			resp := w.Result()
-			is.Equal(resp.StatusCode, tc.status)
-			is.Equal(resp.Header.Get("X-Terraform-Get"), tc.downloadURL) // X-Terraform-Get header
-
-			if tc.status == http.StatusOK {
-				is.Equal(resp.Header.Get("Content-Type"), "application/json")
-			}
+			verifyDownload(t, resp, tc.status, tc.downloadURL)
 		})
 	}
+}
+
+func setupTestRegistry() *Registry {
+	mstore := memstore.NewMemoryStore()
+	mstore.Set("hashicorp/consul/aws", []*core.ModuleVersion{
+		&core.ModuleVersion{
+			Version:   "2.2.2",
+			SourceURL: "git::ssh://git@github.com/hashicorp/consul.git?ref=v2.2.2",
+		},
+	})
+
+	reg := &Registry{
+		IsAuthDisabled: false,
+		moduleStore:    mstore,
+	}
+	reg.setupRoutes()
+
+	return reg
+}
+
+func verifyRoute(t *testing.T, resp *http.Response, path string, authenticated bool) {
+	is := is.New(t)
+	indexUrl := regexp.MustCompile("^/($|[?].*)")
+	healthUrl := regexp.MustCompile("^/health($|[?].*)")
+	wellknownUrl := regexp.MustCompile("^/\\.well-known/terraform\\.json($|[?].*)")
+	v1Url := regexp.MustCompile("^/v1(/|$)")
+	downloadRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/[^/]+/download($|[?].*)")
+	versionRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/versions($|[?].*)")
+	switch {
+	case indexUrl.MatchString(path):
+		t.Logf("Checking index path '%s'", path)
+		is.Equal(resp.StatusCode, http.StatusOK)
+		defer resp.Body.Close()
+	case healthUrl.MatchString(path):
+		t.Logf("Checking health, path '%s'", path)
+		verifyHealth(t, resp, http.StatusOK, HealthResponse{
+			Status: "OK",
+		})
+	case wellknownUrl.MatchString(path):
+		t.Logf("Checking well known, path '%s'", path)
+		verifyServiceDiscovery(t, resp)
+	case authenticated && versionRoute.MatchString(path):
+		t.Logf("Checking version, path '%s'", path)
+		if strings.HasPrefix(path, "/v1/modules/hashicorp/consul/aws/versions") {
+			verifyModuleVersions(t, resp, http.StatusOK, []string{"2.2.2"})
+		} else {
+			is.Equal(resp.StatusCode, http.StatusNotFound)
+		}
+	case authenticated && downloadRoute.MatchString(path):
+		t.Logf("Checking download, path '%s'", path)
+		if strings.HasPrefix(path, "/v1/modules/hashicorp/consul/aws/2.2.2/download") {
+			verifyDownload(t, resp, http.StatusNoContent, "git::ssh://git@github.com/hashicorp/consul.git?ref=v2.2.2")
+		} else {
+			is.Equal(resp.StatusCode, http.StatusNotFound)
+		}
+		defer resp.Body.Close()
+	case authenticated && v1Url.MatchString(path):
+		t.Logf("Checking v1 authenticated, path '%s'", path)
+		t.Logf("Response is '%v'", resp.StatusCode)
+		is.Equal(resp.StatusCode, http.StatusNotFound)
+	case v1Url.MatchString(path):
+		t.Logf("Checking v1, path '%s'", path)
+		t.Logf("Response is '%v'", resp.StatusCode)
+		t.Logf("authenticated %v", authenticated)
+		is.Equal(resp.StatusCode, http.StatusForbidden)
+	default:
+		body, _ := io.ReadAll(resp.Body)
+		t.Logf("Is no match for url '%s'", path)
+		t.Logf("Headers is %v", resp.Header)
+		t.Logf("Body is '%v'", string(body))
+		is.Equal(resp.StatusCode, http.StatusNotFound)
+	}
+}
+
+func FuzzRoutes(f *testing.F) {
+	for _, seed := range []string{
+		"/",
+		"/health",
+		"/.well-known/terraform.json",
+		"/v1/modules/hashicorp/consul/aws/versions",
+		"/v1/modules/hashicorp/consul/aws/2.2.2/download",
+		"/v1/modules/does/not/exist/versions",
+	} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, url string) {
+		defer func() {
+			recover()
+		}()
+		reg := setupTestRegistry()
+		reg.SetAuthTokens([]string{
+			"testauth",
+		})
+
+		req := httptest.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		reg.router.ServeHTTP(w, req)
+
+		resp := w.Result()
+		defer resp.Body.Close()
+		verifyRoute(t, resp, url, false)
+
+		req = httptest.NewRequest("GET", url, nil)
+		req.Header.Set("Authorization", "Bearer testauth")
+		w = httptest.NewRecorder()
+		reg.router.ServeHTTP(w, req)
+
+		resp = w.Result()
+		defer resp.Body.Close()
+		verifyRoute(t, resp, url, true)
+	})
 }
