@@ -62,7 +62,7 @@ func (reg *Registry) setupRoutes() {
 	reg.router.MethodNotAllowed(reg.MethodNotAllowed())
 	reg.router.Get("/", reg.Index())
 	reg.router.Get("/health", reg.Health())
-	reg.router.Get("/.well-known/terraform.json", reg.ServiceDiscovery())
+	reg.router.Get("/.well-known/{name}", reg.ServiceDiscovery())
 
 	// Only API routes are protected with authentication
 	reg.router.Route("/v1", func(r chi.Router) {
@@ -186,6 +186,11 @@ func (reg *Registry) ServiceDiscovery() http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		if chi.URLParam(r, "name") != "terraform.json" {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			log.Printf("error: ModuleVersions: %v", err)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write(resp); err != nil {
 			log.Printf("error: ServiceDiscovery: %+v", err)
