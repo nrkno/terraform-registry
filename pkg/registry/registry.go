@@ -125,6 +125,10 @@ func (reg *Registry) MethodNotAllowed() http.HandlerFunc {
 
 func (reg *Registry) Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI != "/" {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
 		if _, err := w.Write(WelcomeMessage); err != nil {
 			log.Printf("error: Index: %v", err)
 		}
