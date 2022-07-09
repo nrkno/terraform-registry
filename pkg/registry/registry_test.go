@@ -360,11 +360,14 @@ func verifyRoute(t *testing.T, resp *http.Response, path string, authenticated b
 		is.Equal(resp.StatusCode, http.StatusNotFound)
 	case (url.Path == "/v1" || strings.HasPrefix(url.Path, "/v1/")):
 		//case v1Url.MatchString(path):
-		t.Logf("Checking unathenticated v1, path '%s'", path)
+		t.Logf("Checking unathenticated v1, path '%s', parsed path is '%s'", path, url.Path)
 		t.Logf("Fragment is '%v'", url.Fragment)
 		t.Logf("Response is '%v'", resp.StatusCode)
 		t.Logf("authenticated %v", authenticated)
 		if path == "/v1#" {
+			is.Equal(resp.StatusCode, http.StatusNotFound)
+			// for instance //0/v1 is parsed as /v1
+		} else if !strings.HasPrefix(path, "/v1") {
 			is.Equal(resp.StatusCode, http.StatusNotFound)
 		} else if strings.HasPrefix(path, "/v1#") {
 			is.Equal(resp.StatusCode, http.StatusNotFound)
