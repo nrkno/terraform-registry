@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -318,17 +319,18 @@ func setupTestRegistry() *Registry {
 
 func verifyRoute(t *testing.T, resp *http.Response, path string, authenticated bool) {
 	is := is.New(t)
-	indexUrl := regexp.MustCompile("^/($|[?].*)")
+	url, err := url.Parse(path)
+	if err != nil {
+		return
+	}
 	healthUrl := regexp.MustCompile("^/health($|[?].*)")
 	wellknownUrl := regexp.MustCompile("^/\\.well-known/terraform\\.json($|[?].*)")
-	v1Url := regexp.MustCompile("^/v1(/|$)")
 	downloadRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/[^/]+/download($|[?].*)")
 	versionRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/versions($|[?].*)")
 	switch {
-	case indexUrl.MatchString(path):
-		t.Logf("Checking index path '%s'", path)
+	case path == "/":
+		t.Logf("Checking index path '%s', parsed path is '%s'", path, url.Path)
 		is.Equal(resp.StatusCode, http.StatusOK)
-		defer resp.Body.Close()
 	case healthUrl.MatchString(path):
 		t.Logf("Checking health, path '%s'", path)
 		verifyHealth(t, resp, http.StatusOK, HealthResponse{
@@ -351,19 +353,30 @@ func verifyRoute(t *testing.T, resp *http.Response, path string, authenticated b
 		} else {
 			is.Equal(resp.StatusCode, http.StatusNotFound)
 		}
-		defer resp.Body.Close()
-	case authenticated && v1Url.MatchString(path):
-		t.Logf("Checking v1 authenticated, path '%s'", path)
-		t.Logf("Response is '%v'", resp.StatusCode)
-		is.Equal(resp.StatusCode, http.StatusNotFound)
-	case v1Url.MatchString(path):
-		t.Logf("Checking v1, path '%s'", path)
+	case authenticated && (url.Path == "/v1" || strings.HasPrefix(url.Path, "/v1/")):
+		t.Logf("Checking authenticated v1, path '%s'", path)
 		t.Logf("Response is '%v'", resp.StatusCode)
 		t.Logf("authenticated %v", authenticated)
-		is.Equal(resp.StatusCode, http.StatusForbidden)
+		is.Equal(resp.StatusCode, http.StatusNotFound)
+	case (url.Path == "/v1" || strings.HasPrefix(url.Path, "/v1/")):
+		//case v1Url.MatchString(path):
+		t.Logf("Checking unathenticated v1, path '%s'", path)
+		t.Logf("Fragment is '%v'", url.Fragment)
+		t.Logf("Response is '%v'", resp.StatusCode)
+		t.Logf("authenticated %v", authenticated)
+		if path == "/v1#" {
+			is.Equal(resp.StatusCode, http.StatusNotFound)
+		} else if strings.HasPrefix(path, "/v1#") {
+			is.Equal(resp.StatusCode, http.StatusNotFound)
+		} else {
+			is.Equal(resp.StatusCode, http.StatusForbidden)
+		}
 	default:
 		body, _ := io.ReadAll(resp.Body)
 		t.Logf("Is no match for url '%s'", path)
+		t.Logf("Parsed path is '%s'", url.Path)
+		t.Logf("Frament is '%s'", url.Fragment)
+		t.Logf("authenticated %v", authenticated)
 		t.Logf("Headers is %v", resp.Header)
 		t.Logf("Body is '%v'", string(body))
 		is.Equal(resp.StatusCode, http.StatusNotFound)
