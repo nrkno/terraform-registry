@@ -1,0 +1,45 @@
+---
+name: Fuzz Test
+
+on:
+  pull_request:
+    paths-ignore:
+    - '.github/'
+    branches:
+      - main
+
+jobs:
+  FuzzTests:
+    strategy:
+      matrix:
+        tests: ["FuzzTokenAuth;./pkg/registry;60s", "FuzzRoutes;./pkg/registry;60s"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.18'
+      - name: Fuzz test
+        shell: bash
+        env:
+          TEST: "${{ matrix.tests }}"
+        run: |
+          IFS=";" read test pkg timeout <<<$TEST
+          go test "${pkg}" -fuzztime="${timeout}" -fuzz="${test}"
+      - name: Upload fuzz failure seed corpus as run artifact
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: testdata
+          path: pkg/registry/testdata
+      - name: Report failure
+        uses: actions/github-script@v6
+        if: failure() && github.event_name == 'pull_request'
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'Fuzz test failed on ${{ github.event.pull_request.head.sha }}. To troubleshoot locally, use the [GitHub CLI](https://cli.github.com) to download the seed corpus with\n```\ngh run download ${{ github.run_id }} -n testdata\n```'
+            })
