@@ -4,13 +4,12 @@ on:
 
 jobs:
   staticcheck:
-	name: "Run Go Static Checker"
-	runs-on: ubuntu-latest
-	steps:
-	- uses: actions/checkout@v3
-	  with:
-		fetch-depth: 1
-	- uses: dominikh/staticcheck-action@v1.2.0
-	  with:
-		version: "2022.1.1"
-    continue-on-error: true
+    name: "Run Golang static checker"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - uses: dominikh/staticcheck-action@v1.2.0
+        with:
+	  version: "2022.1.1"
