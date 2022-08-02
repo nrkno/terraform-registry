@@ -178,9 +178,7 @@ func (s *GitHubStore) searchRepositories(ctx context.Context) ([]*github.Reposit
 			return allRepos, err
 		}
 
-		for _, repo := range result.Repositories {
-			allRepos = append(allRepos, repo)
-		}
+		allRepos = append(allRepos, result.Repositories...)
 
 		if resp.NextPage == 0 {
 			break
