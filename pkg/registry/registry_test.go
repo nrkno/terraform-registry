@@ -324,7 +324,7 @@ func verifyRoute(t *testing.T, resp *http.Response, path string, authenticated b
 		return
 	}
 	healthUrl := regexp.MustCompile("^/health($|[?].*)")
-	wellknownUrl := regexp.MustCompile("^/\\.well-known/terraform\\.json($|[?].*)")
+	wellknownUrl := regexp.MustCompile(`^/\.well-known/terraform\.json($|[?].*)`)
 	downloadRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/[^/]+/download($|[?].*)")
 	versionRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/versions($|[?].*)")
 	switch {
