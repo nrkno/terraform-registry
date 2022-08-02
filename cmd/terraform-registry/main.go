@@ -88,6 +88,10 @@ func main() {
 
 	// Load environment from files
 	for _, item := range strings.Split(envJSONFiles, ",") {
+		if len(item) == 0 {
+			continue
+		}
+
 		prefix := ""
 		filename := item
 		// If the filename is prefixed, the prefix must be separated from the filename.
