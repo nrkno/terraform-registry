@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/matryer/is v1.4.0
 	github.com/migueleliasweb/go-github-mock v0.0.10
-	go.uber.org/zap v1.22.0
+	go.uber.org/zap v1.23.0
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
 )
 
