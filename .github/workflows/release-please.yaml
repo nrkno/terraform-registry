@@ -12,5 +12,7 @@ jobs:
         with:
           release-type: go
           package-name: terraform-registry
+          # Remove after first release
+          release-as: v0.14.0
           # Before we are at v1
           bump-minor-pre-major: true
