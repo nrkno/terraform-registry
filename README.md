@@ -210,7 +210,7 @@ module "foo" {
 $ make test
 ```
 
-#### Adding license information
+### Adding license information
 
 This adds or updates licensing information of all relevant files in the
 respository using [reuse](https://git.fsfe.org/reuse/tool#install).
