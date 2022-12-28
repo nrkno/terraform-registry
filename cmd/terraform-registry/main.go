@@ -50,7 +50,7 @@ var (
 func init() {
 	flag.StringVar(&listenAddr, "listen-addr", ":8080", "")
 	flag.BoolVar(&authDisabled, "auth-disabled", false, "")
-	flag.StringVar(&authTokensFile, "auth-tokens-file", "", "")
+	flag.StringVar(&authTokensFile, "auth-tokens-file", "", "JSON encoded file containing a map of auth token descriptions and tokens.")
 	flag.StringVar(&envJSONFiles, "env-json-files", "", "List of comma-separated paths to JSON files. Converts the keys to uppercase and replaces all '-' with '_'. Prefix filepaths with 'myprefix:' to use a prefix names of the variables from a specific file.")
 	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
@@ -209,22 +209,13 @@ func parseAuthTokensFile(filepath string) ([]string, error) {
 	if err != nil {
 		return tokens, err
 	}
-	if strings.HasSuffix(filepath, ".json") {
-		tokenmap := make(map[string]string)
-		err = json.Unmarshal(b, &tokenmap)
-		if err != nil {
-			return tokens, err
-		}
-		for _, token := range tokenmap {
-			tokens = append(tokens, token)
-		}
-	} else {
-		lines := strings.Split(string(b), "\n")
-		for _, token := range lines {
-			if token = strings.TrimSpace(token); token != "" {
-				tokens = append(tokens, token)
-			}
-		}
+	tokenmap := make(map[string]string)
+	err = json.Unmarshal(b, &tokenmap)
+	if err != nil {
+		return tokens, err
+	}
+	for _, token := range tokenmap {
+		tokens = append(tokens, token)
 	}
 
 	return tokens, nil
