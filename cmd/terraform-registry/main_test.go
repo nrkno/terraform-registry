@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"testing"
 
 	"github.com/matryer/is"
@@ -25,12 +24,11 @@ func TestParseAuthTokenFile(t *testing.T) {
 
 	tokens, err := parseAuthTokensFile(f.Name())
 	is.NoErr(err)
-	sort.Strings(tokens)
 
 	is.Equal(len(tokens), 3)
-	is.Equal(tokens[0], "bar")
-	is.Equal(tokens[1], "baz")
-	is.Equal(tokens[2], "foo")
+	is.Equal(tokens["token1"], "foo")
+	is.Equal(tokens["token2"], "bar")
+	is.Equal(tokens["token3"], "baz")
 }
 
 func TestSetEnvironmentFromFileJSON(t *testing.T) {

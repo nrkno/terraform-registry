@@ -201,21 +201,16 @@ func gitHubRegistry(reg *registry.Registry) {
 	}()
 }
 
-// parseAuthTokensFile returns a slice of all non-empty strings found in the `filepath`.
-func parseAuthTokensFile(filepath string) ([]string, error) {
-	var tokens []string
-
+// parseAuthTokensFile returns a map of all elements in the JSON object contained in `filepath`.
+func parseAuthTokensFile(filepath string) (map[string]string, error) {
 	b, err := os.ReadFile(filepath)
 	if err != nil {
-		return tokens, err
+		return nil, err
 	}
-	tokenmap := make(map[string]string)
-	err = json.Unmarshal(b, &tokenmap)
+	tokens := make(map[string]string)
+	err = json.Unmarshal(b, &tokens)
 	if err != nil {
-		return tokens, err
-	}
-	for _, token := range tokenmap {
-		tokens = append(tokens, token)
+		return nil, err
 	}
 
 	return tokens, nil

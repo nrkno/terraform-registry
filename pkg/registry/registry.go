@@ -27,7 +27,7 @@ type Registry struct {
 	IsAuthDisabled bool
 
 	router      *chi.Mux
-	authTokens  []string
+	authTokens  map[string]string
 	moduleStore core.ModuleStore
 
 	logger *zap.Logger
@@ -52,13 +52,23 @@ func (reg *Registry) SetModuleStore(s core.ModuleStore) {
 }
 
 // GetAuthTokens gets the valid auth tokens configured for this instance.
-func (reg *Registry) GetAuthTokens() []string {
-	return reg.authTokens
+func (reg *Registry) GetAuthTokens() map[string]string {
+	// Make sure map can't be modified indirectly
+	m := make(map[string]string, len(reg.authTokens))
+	for k, v := range reg.authTokens {
+		m[k] = v
+	}
+	return m
 }
 
 // SetAuthTokens sets the valid auth tokens configured for this instance.
-func (reg *Registry) SetAuthTokens(authTokens []string) {
-	reg.authTokens = authTokens
+func (reg *Registry) SetAuthTokens(authTokens map[string]string) {
+	// Make sure map can't be modified indirectly
+	m := make(map[string]string, len(authTokens))
+	for k, v := range authTokens {
+		m[k] = v
+	}
+	reg.authTokens = m
 }
 
 // setupRoutes initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
