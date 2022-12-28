@@ -174,31 +174,14 @@ func (reg *Registry) Health() http.HandlerFunc {
 }
 
 type ServiceDiscoveryResponse struct {
-	ModulesV1 string                          `json:"modules.v1"`
-	LoginV1   ServiceDiscoveryResponseLoginV1 `json:"login.v1"`
-}
-
-type ServiceDiscoveryResponseLoginV1 struct {
-	Client     string   `json:"client"`
-	GrantTypes []string `json:"grant_types"`
-	Authz      string   `json:"authz"`
-	Token      string   `json:"token"`
-	Ports      []int    `json:"ports"`
+	ModulesV1 string `json:"modules.v1"`
 }
 
 // ServiceDiscovery returns a handler that returns a JSON payload for Terraform service discovery.
-// https://www.terraform.io/internals/login-protocol
 // https://www.terraform.io/internals/module-registry-protocol
 func (reg *Registry) ServiceDiscovery() http.HandlerFunc {
 	spec := ServiceDiscoveryResponse{
 		ModulesV1: "/v1/modules/",
-		LoginV1: ServiceDiscoveryResponseLoginV1{
-			Client:     "terraform-cli",
-			GrantTypes: []string{"authz_code"},
-			Authz:      "/oauth/authorization",
-			Token:      "/oauth/token",
-			Ports:      []int{10000, 10010},
-		},
 	}
 
 	resp, err := json.Marshal(spec)
