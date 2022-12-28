@@ -79,8 +79,8 @@ func FuzzTokenAuth(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, authToken string, authorizationHeader string) {
 		reg := Registry{
-			authTokens: []string{
-				authToken,
+			authTokens: map[string]string{
+				"description": authToken,
 			},
 			logger: zap.NewNop(),
 		}
@@ -409,8 +409,8 @@ func FuzzRoutes(f *testing.F) {
 			recover()
 		}()
 		reg := setupTestRegistry()
-		reg.SetAuthTokens([]string{
-			"testauth",
+		reg.SetAuthTokens(map[string]string{
+			"foo": "testauth",
 		})
 
 		req := httptest.NewRequest("GET", url, nil)
