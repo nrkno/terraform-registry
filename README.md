@@ -37,12 +37,18 @@ Authentication:
 - Only `/v1/*` routes are protected
 
 ## Running
-
-Build and run
+### Native
 
 ```
 $ make build
-$ ./terraform-registry
+$ ./terraform-registry -h
+```
+
+### Docker
+
+```
+$ docker build -t terraform-registry .
+$ docker run terraform-registry
 ```
 
 ## Configuring
