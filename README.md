@@ -59,17 +59,14 @@ store specific ones.
 Command line arguments:
 - `-listen-addr`: HTTP server bind address (default: `:8080`)
 - `-auth-disabled`: Disable HTTP bearer token authentication (default: `false`)
-- `-auth-tokens-file`: File containing tokens
-  - If the file has a `.json` file extension its contents is expected to be in
-    the following format:
-    ```json
-    {
-      "description for some token": "some token",
-      "description for some other token": "some other token"
-    }
-    ```
-  - All other file extensions is expected to contain a newline separated list of
-    plain text tokens.
+- `-auth-tokens-file`: JSON encoded file containing a map of auth token
+  descriptions and tokens.
+  ```json
+  {
+    "description for some token": "some token",
+    "description for some other token": "some other token"
+  }
+  ```
 - `-env-json-files`: A list of comma separated filenames pointing to JSON files
   containing an object whose keys and values will be loaded as environment vars.
   - All variable names will be converted to uppercase, and `-` will become `_`.
