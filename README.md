@@ -13,7 +13,9 @@ private Terraform registry.
 stable and may change at any time before v1.0 is reached.
 
 Please question and report any issues you encounter with this implementation.
-There is surely room for improvement.
+There is surely room for improvement. Raise an issue discussing your proposed
+changes before submitting a PR. There is no guarantee we will merge incoming
+pull requests.
 
 Third-party provider registries are supported only in Terraform CLI v0.13 and
 later. Prior versions do not support this protocol.
