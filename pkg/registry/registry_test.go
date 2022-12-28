@@ -37,7 +37,7 @@ func verifyServiceDiscovery(t *testing.T, resp *http.Response) {
 
 	is.Equal(
 		compactJSON.String(),
-		`{"modules.v1":"/v1/modules/","login.v1":{"client":"terraform-cli","grant_types":["authz_code"],"authz":"/oauth/authorization","token":"/oauth/token","ports":[10000,10010]}}`,
+		`{"modules.v1":"/v1/modules/"}`,
 	)
 }
 
