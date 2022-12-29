@@ -120,7 +120,7 @@ func main() {
 		go watchFile(context.TODO(), authTokensFile, 10*time.Second, func(b []byte) {
 			tokens, err := parseAuthTokens(b)
 			if err != nil {
-				logger.Fatal("failed to load auth tokens",
+				logger.Error("failed to load auth tokens",
 					zap.Errors("err", []error{err}),
 				)
 			}
