@@ -5,7 +5,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha1"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -114,19 +116,21 @@ func main() {
 
 	// Configure authentication
 	if !reg.IsAuthDisabled {
-		tokens, err := parseAuthTokensFile(authTokensFile)
-		if err != nil {
-			logger.Fatal("failed to load auth tokens",
-				zap.Errors("err", []error{err}),
-			)
-		}
-		if len(tokens) == 0 {
-			logger.Warn("no tokens found in auth token file")
-		}
-		reg.SetAuthTokens(tokens)
-
+		// Watch for changes of the auth file
+		go watchFile(context.TODO(), authTokensFile, 10*time.Second, func(b []byte) {
+			tokens, err := parseAuthTokens(b)
+			if err != nil {
+				logger.Fatal("failed to load auth tokens",
+					zap.Errors("err", []error{err}),
+				)
+			}
+			if len(tokens) == 0 {
+				logger.Warn("no tokens loaded from auth token file")
+			}
+			reg.SetAuthTokens(tokens)
+			logger.Info("successfully loaded auth tokens", zap.Int("count", len(tokens)))
+		})
 		logger.Info("authentication enabled")
-		logger.Info("loaded auth tokens", zap.Int("count", len(tokens)))
 	} else {
 		logger.Warn("authentication disabled")
 	}
@@ -160,6 +164,56 @@ func main() {
 		logger.Panic("ListenAndServe",
 			zap.Errors("err", []error{srv.ListenAndServe()}),
 		)
+	}
+}
+
+// watchFile reads the contents of the file at `filename`, first immediately, then at at every `interval`.
+// If and only if the file contents have changed since the last invocation of `callback` it is called again.
+// Note that the callback will always be called initially when this function is called.
+func watchFile(ctx context.Context, filename string, interval time.Duration, callback func(b []byte)) {
+	var lastSum []byte
+	h := sha1.New()
+
+	fn := func() {
+		b, err := os.ReadFile(filename)
+		if err != nil {
+			logger.Error("watchFile: failed to read file",
+				zap.String("filename", filename),
+				zap.Errors("err", []error{err}),
+			)
+			return
+		}
+		if sum := h.Sum(b); bytes.Equal(sum, lastSum) {
+			logger.Debug("watchFile: file contents unchanged. do nothing.",
+				zap.String("filename", filename),
+			)
+			return
+		} else {
+			logger.Debug("watchFile: file contents updated. triggering callback.",
+				zap.String("filename", filename),
+			)
+			callback(b)
+			lastSum = sum
+		}
+	}
+
+	// Don't wait for the first tick
+	fn()
+
+	t := time.NewTicker(interval)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Debug("watchFile: goroutine stopped",
+				zap.String("filename", filename),
+				zap.Errors("err", []error{ctx.Err()}),
+			)
+			return
+		case <-t.C:
+			fn()
+		}
 	}
 }
 
@@ -201,18 +255,12 @@ func gitHubRegistry(reg *registry.Registry) {
 	}()
 }
 
-// parseAuthTokensFile returns a map of all elements in the JSON object contained in `filepath`.
-func parseAuthTokensFile(filepath string) (map[string]string, error) {
-	b, err := os.ReadFile(filepath)
-	if err != nil {
-		return nil, err
-	}
+// parseAuthTokens returns a map of all elements in the JSON object contained in `b`.
+func parseAuthTokens(b []byte) (map[string]string, error) {
 	tokens := make(map[string]string)
-	err = json.Unmarshal(b, &tokens)
-	if err != nil {
+	if err := json.Unmarshal(b, &tokens); err != nil {
 		return nil, err
 	}
-
 	return tokens, nil
 }
 

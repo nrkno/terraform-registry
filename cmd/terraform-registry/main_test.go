@@ -5,10 +5,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/matryer/is"
 )
@@ -16,13 +18,7 @@ import (
 func TestParseAuthTokenFile(t *testing.T) {
 	is := is.New(t)
 
-	f, err := os.CreateTemp("", "*.json")
-	is.NoErr(err)
-
-	fmt.Fprintf(f, "{\"token1\": \"foo\", \"token2\": \"bar\", \"token3\": \"baz\"}")
-	f.Seek(0, io.SeekStart)
-
-	tokens, err := parseAuthTokensFile(f.Name())
+	tokens, err := parseAuthTokens([]byte(`{"token1": "foo", "token2": "bar", "token3": "baz"}`))
 	is.NoErr(err)
 
 	is.Equal(len(tokens), 3)
@@ -53,4 +49,30 @@ func TestSetEnvironmentFromFileJSON(t *testing.T) {
 			is.Equal(os.Getenv(prefix+"VAR_NUMBER_TWO"), "value2")
 		})
 	}
+}
+
+func TestWatchFile(t *testing.T) {
+	is := is.New(t)
+
+	f, err := os.CreateTemp(t.TempDir(), "*.json")
+	is.NoErr(err)
+
+	results := make(chan []byte, 1)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	callback := func(b []byte) { results <- b }
+	go watchFile(ctx, f.Name(), 50*time.Millisecond, callback)
+	is.Equal(<-results, []byte{}) // initial callback before we've written anything
+
+	_, err = f.WriteString("foo")
+	is.NoErr(err)
+	is.Equal(<-results, []byte("foo")) // after first write
+
+	_, err = f.WriteString("bar")
+	is.NoErr(err)
+	is.Equal(<-results, []byte("foobar")) // after second write
+
+	time.Sleep(100 * time.Millisecond)
+	is.Equal(len(results), 0) // should not be any more events
 }

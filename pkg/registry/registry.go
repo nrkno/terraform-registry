@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -29,6 +30,7 @@ type Registry struct {
 	router      *chi.Mux
 	authTokens  map[string]string
 	moduleStore core.ModuleStore
+	mut         sync.RWMutex
 
 	logger *zap.Logger
 }
@@ -53,6 +55,9 @@ func (reg *Registry) SetModuleStore(s core.ModuleStore) {
 
 // GetAuthTokens gets the valid auth tokens configured for this instance.
 func (reg *Registry) GetAuthTokens() map[string]string {
+	reg.mut.RLock()
+	defer reg.mut.RUnlock()
+
 	// Make sure map can't be modified indirectly
 	m := make(map[string]string, len(reg.authTokens))
 	for k, v := range reg.authTokens {
@@ -68,7 +73,10 @@ func (reg *Registry) SetAuthTokens(authTokens map[string]string) {
 	for k, v := range authTokens {
 		m[k] = v
 	}
+
+	reg.mut.Lock()
 	reg.authTokens = m
+	reg.mut.Unlock()
 }
 
 // setupRoutes initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
