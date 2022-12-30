@@ -13,7 +13,7 @@ build-docker:
 	docker build . -t $(DOCKER_TAG)
 
 test:
-	go test ./...
+	go test ./... -timeout 10s
 
 run:
 	go run ${CMD_SOURCE}
