@@ -53,7 +53,7 @@ func init() {
 	flag.StringVar(&listenAddr, "listen-addr", ":8080", "")
 	flag.BoolVar(&authDisabled, "auth-disabled", false, "")
 	flag.StringVar(&authTokensFile, "auth-tokens-file", "", "JSON encoded file containing a map of auth token descriptions and tokens.")
-	flag.StringVar(&envJSONFiles, "env-json-files", "", "List of comma-separated paths to JSON files. Converts the keys to uppercase and replaces all '-' with '_'. Prefix filepaths with 'myprefix:' to use a prefix names of the variables from a specific file.")
+	flag.StringVar(&envJSONFiles, "env-json-files", "", "Comma-separated list of paths to JSON encoded files containing a map of environment variable names and values to set. Converts the keys to uppercase and replaces all occurences of '-' with '_'. E.g. prefix filepaths with 'myprefix_:' to prefix all keys in the file with 'MYPREFIX_' before they are set.")
 	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
