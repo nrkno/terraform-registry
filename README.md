@@ -67,8 +67,11 @@ Command line arguments:
     "description for some other token": "some other token"
   }
   ```
-- `-env-json-files`: A list of comma separated filenames pointing to JSON files
-  containing an object whose keys and values will be loaded as environment vars.
+- `-env-json-files`: Comma-separated list of paths to JSON encoded files
+  containing a map of environment variable names and values to set.
+  Converts the keys to uppercase and replaces all occurences of '-' with '_'.
+  E.g. prefix filepaths with 'myprefix_:' to prefix all keys in the file with
+  'MYPREFIX_' before they are set.
   - All variable names will be converted to uppercase, and `-` will become `_`.
   - If the filenames are prefixed with `myprefix_:`, the resulting environment
     variable names from the specific file will be prefixed with `MYPREFIX_`
