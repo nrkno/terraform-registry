@@ -11,7 +11,7 @@ require (
 	github.com/google/go-github/v43 v43.0.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/matryer/is v1.4.0
-	github.com/migueleliasweb/go-github-mock v0.0.13
+	github.com/migueleliasweb/go-github-mock v0.0.14
 	go.uber.org/zap v1.24.0
 	golang.org/x/oauth2 v0.4.0
 )

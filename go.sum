@@ -28,8 +28,8 @@ github.com/hashicorp/go-version v1.6.0 h1:feTTfFNnjP967rlCxM/I9g701jU+RN74YKx2mO
 github.com/hashicorp/go-version v1.6.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/matryer/is v1.4.0 h1:sosSmIWwkYITGrxZ25ULNDeKiMNzFSr4V/eqBQP0PeE=
 github.com/matryer/is v1.4.0/go.mod h1:8I/i5uYgLzgsgEloJE1U6xx5HkBQpAZvepWuujKwMRU=
-github.com/migueleliasweb/go-github-mock v0.0.13 h1:pV4yG4XlL/fEPE1Er6MzErAYFyiRSBYw1oo2OojTiCQ=
-github.com/migueleliasweb/go-github-mock v0.0.13/go.mod h1:mD5w+9J3oBBMLr7uD6owEYlYBAL8tZd+BA7iGjI4EU8=
+github.com/migueleliasweb/go-github-mock v0.0.14 h1:yKEef6u8mTGHUeKFp3Lsp5cbrxoNwFLIcHee00iDlFk=
+github.com/migueleliasweb/go-github-mock v0.0.14/go.mod h1:mD5w+9J3oBBMLr7uD6owEYlYBAL8tZd+BA7iGjI4EU8=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
