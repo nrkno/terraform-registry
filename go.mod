@@ -11,14 +11,14 @@ require (
 	github.com/google/go-github/v43 v43.0.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/matryer/is v1.4.0
-	github.com/migueleliasweb/go-github-mock v0.0.14
+	github.com/migueleliasweb/go-github-mock v0.0.16
 	go.uber.org/zap v1.24.0
 	golang.org/x/oauth2 v0.4.0
 )
 
 require (
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-github/v41 v41.0.0 // indirect
+	github.com/google/go-github/v50 v50.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
