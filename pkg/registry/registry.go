@@ -210,7 +210,6 @@ func (reg *Registry) ServiceDiscovery() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if chi.URLParam(r, "name") != "terraform.json" {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			reg.logger.Error("ServiceDiscovery", zap.Errors("err", []error{err}))
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
