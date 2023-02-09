@@ -10,7 +10,10 @@ RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/
 WORKDIR /go/src/app
 COPY . /go/src/app
 
-RUN go get -d -v ./...
+COPY go.mod go.sum ./
+RUN go mod download -x
+
+COPY . /go/src/app
 RUN make GO_FLAGS="-buildvcs=false" test build
 
 FROM gcr.io/distroless/base-debian11
