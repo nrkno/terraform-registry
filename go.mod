@@ -10,7 +10,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/google/go-github/v43 v43.0.0
 	github.com/hashicorp/go-version v1.6.0
-	github.com/matryer/is v1.4.0
+	github.com/matryer/is v1.4.1
 	github.com/migueleliasweb/go-github-mock v0.0.16
 	go.uber.org/zap v1.24.0
 	golang.org/x/oauth2 v0.5.0
