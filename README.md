@@ -69,7 +69,8 @@ Command line arguments:
   ```
 - `-env-json-files`: Comma-separated list of paths to JSON encoded files
   containing a map of environment variable names and values to set.
-  Converts the keys to uppercase and replaces all occurences of '-' with '_'.
+  Converts the keys to uppercase and replaces all occurences of `-` (dash) with
+  `_` (underscore).
   E.g. prefix filepaths with 'myprefix_:' to prefix all keys in the file with
   'MYPREFIX_' before they are set.
   - All variable names will be converted to uppercase, and `-` will become `_`.
@@ -95,9 +96,9 @@ The `provider` part of the module URL must always be set to `generic` since
 this store implementation has no notion of the type of providers the modules
 are designed for.
 
-Version strings are matched with repository tags. Upon loading the list of
+Version strings are matched with [repository topics][]. Upon loading the list of
 repositories, tags prefixed with `v` will have their prefix removed.
-I.e. a repository tag `v1.2.3` will be made available as version `1.2.3`.
+I.e., a repository tag `v1.2.3` will be made available as version `1.2.3`.
 
 No verification is performed to check if the repo actually contains Terraform
 modules. This is left for Terraform to determine.
@@ -108,6 +109,8 @@ Environment variables:
 Command line arguments:
 - `-github-owner-filter`: GitHub org/user repository filter
 - `-github-topic-filter`: GitHub topic repository filter
+
+[repository topics]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics
 
 ## Development
 
