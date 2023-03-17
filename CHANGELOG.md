@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.15.0](https://github.com/nrkno/terraform-registry/compare/v0.14.0...v0.15.0) (2023-03-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* do not crash if reading auth tokens fail
+* store registry auth tokens as a map
+* remove support for newline separated auth file
+
+### Features
+
+* automatically update auth tokens on auth file changes ([e3d406e](https://github.com/nrkno/terraform-registry/commit/e3d406e632e2254001027afd5f57da240706ab91))
+* remove support for newline separated auth file ([8fce7d7](https://github.com/nrkno/terraform-registry/commit/8fce7d7d659c5c812e983618f42285d4898d39c2))
+* store registry auth tokens as a map ([6294753](https://github.com/nrkno/terraform-registry/commit/629475355c998e15a13b6bc722e3cd2ef166aa15))
+
+
+### Bug Fixes
+
+* do not crash if reading auth tokens fail ([40354e6](https://github.com/nrkno/terraform-registry/commit/40354e66bec988c4724d937a79dcdab348e76066))
+* remove unimplemented login service definition ([b9e0ff0](https://github.com/nrkno/terraform-registry/commit/b9e0ff06207d39f76ff0bfe021d4c5de92fe9e9e))
+
 ## 0.14.0 (2022-09-20)
 
 
