@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nrkno/terraform-registry/pkg/oauth2/google"
 	"github.com/nrkno/terraform-registry/pkg/registry"
 	"github.com/nrkno/terraform-registry/pkg/store/github"
 	"go.uber.org/zap"
@@ -38,6 +39,11 @@ var (
 	gitHubOwnerFilter string
 	gitHubTopicFilter string
 
+	oauthID       string
+	oauthSecret   string
+	oauthProvider string
+	oauthTokenKey string
+
 	// > Environment variable names used by the utilities in the Shell and Utilities
 	// > volume of IEEE Std 1003.1-2001 consist solely of uppercase letters, digits,
 	// > and the '_' (underscore) from the characters defined in Portable Character
@@ -52,6 +58,7 @@ var (
 func init() {
 	flag.StringVar(&listenAddr, "listen-addr", ":8080", "")
 	flag.BoolVar(&authDisabled, "auth-disabled", false, "")
+	flag.StringVar(&oauthProvider, "oauth-provider", "", "Only google is supported.")
 	flag.StringVar(&authTokensFile, "auth-tokens-file", "", "JSON encoded file containing a map of auth token descriptions and tokens.")
 	flag.StringVar(&envJSONFiles, "env-json-files", "", "Comma-separated list of paths to JSON encoded files containing a map of environment variable names and values to set. Converts the keys to uppercase and replaces all occurences of '-' with '_'. E.g. prefix filepaths with 'myprefix_:' to prefix all keys in the file with 'MYPREFIX_' before they are set.")
 	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
@@ -110,6 +117,9 @@ func main() {
 
 	// Load environment variables here!
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
+	oauthID = os.Getenv("OAUTH_ID")
+	oauthSecret = os.Getenv("OAUTH_SECRET")
+	oauthTokenKey = os.Getenv("OAUTH_TOKEN_KEY")
 
 	reg := registry.NewRegistry(logger)
 	reg.IsAuthDisabled = authDisabled
@@ -127,9 +137,20 @@ func main() {
 			if len(tokens) == 0 {
 				logger.Warn("no tokens loaded from auth token file")
 			}
+
 			reg.SetAuthTokens(tokens)
 			logger.Info("successfully loaded auth tokens", zap.Int("count", len(tokens)))
+
+			err = reg.SetOauth2AuthToken(oauthTokenKey)
+			if err != nil {
+				logger.Warn("no token assigned for oauth2 login")
+			}
 		})
+
+		if oauthProvider != "" {
+			oauth2Config(reg)
+		}
+
 		logger.Info("authentication enabled")
 	} else {
 		logger.Warn("authentication disabled")
@@ -214,6 +235,24 @@ func watchFile(ctx context.Context, filename string, interval time.Duration, cal
 		case <-t.C:
 			fn()
 		}
+	}
+}
+
+func oauth2Config(reg *registry.Registry) {
+	if oauthID == "" {
+		logger.Fatal("missing environment var OAUTH_ID")
+	}
+
+	if oauthSecret == "" {
+		logger.Fatal("missing environment var OAUTH_SECRET")
+	}
+
+	switch oauthProvider {
+	case "google":
+		oauth2 := google.NewGoogleOauth2(oauthID, oauthSecret, logger.Named("google oauth2"))
+		reg.SetModuleOauth2(oauth2)
+	default:
+		logger.Fatal("invalid oauth provider", zap.String("selected", oauthProvider))
 	}
 }
 
