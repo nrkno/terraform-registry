@@ -19,3 +19,9 @@ type ModuleStore interface {
 	ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*ModuleVersion, error)
 	GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*ModuleVersion, error)
 }
+
+type ModuleOauth2 interface {
+	ClientID() string
+	Endpoint() string
+	ValidCode(ctx context.Context, code, redirectUrl, codeVerifier string) error
+}
