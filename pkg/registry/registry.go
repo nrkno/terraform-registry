@@ -6,12 +6,14 @@ package registry
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-playground/form"
 	"github.com/nrkno/terraform-registry/pkg/core"
 	"go.uber.org/zap"
 )
@@ -27,10 +29,12 @@ type Registry struct {
 	// Whether to disable auth
 	IsAuthDisabled bool
 
-	router      *chi.Mux
-	authTokens  map[string]string
-	moduleStore core.ModuleStore
-	mut         sync.RWMutex
+	router       *chi.Mux
+	authTokens   map[string]string
+	moduleStore  core.ModuleStore
+	mut          sync.RWMutex
+	moduleOauth2 core.ModuleOauth2
+	oauth2Token  string
 
 	logger *zap.Logger
 }
@@ -51,6 +55,10 @@ func NewRegistry(logger *zap.Logger) *Registry {
 // SetModuleStore sets the active module store for this instance.
 func (reg *Registry) SetModuleStore(s core.ModuleStore) {
 	reg.moduleStore = s
+}
+
+func (reg *Registry) SetModuleOauth2(c core.ModuleOauth2) {
+	reg.moduleOauth2 = c
 }
 
 // GetAuthTokens gets the valid auth tokens configured for this instance.
@@ -79,6 +87,19 @@ func (reg *Registry) SetAuthTokens(authTokens map[string]string) {
 	reg.mut.Unlock()
 }
 
+func (reg *Registry) SetOauth2AuthToken(tokenKey string) error {
+	reg.mut.RLock()
+	defer reg.mut.RUnlock()
+
+	if token, ok := reg.authTokens[tokenKey]; ok {
+		reg.oauth2Token = token
+
+		return nil
+	}
+
+	return fmt.Errorf("while trying to set the token key %s for oauth2 successful login", tokenKey)
+}
+
 // setupRoutes initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
 func (reg *Registry) setupRoutes() {
 	reg.router = chi.NewRouter()
@@ -88,6 +109,7 @@ func (reg *Registry) setupRoutes() {
 	reg.router.Get("/", reg.Index())
 	reg.router.Get("/health", reg.Health())
 	reg.router.Get("/.well-known/{name}", reg.ServiceDiscovery())
+	reg.router.Post("/oauth/token", reg.ExchangeCode())
 
 	// Only API routes are protected with authentication
 	reg.router.Route("/v1", func(r chi.Router) {
@@ -191,23 +213,41 @@ func (reg *Registry) Health() http.HandlerFunc {
 	}
 }
 
+type LoginConfig struct {
+	Client     string   `json:"client"`
+	GrantTypes []string `json:"grant_types"`
+	Authz      string   `json:"authz"`
+	Token      string   `json:"token"`
+	Ports      []int    `json:"ports"`
+	Scopes     []string `json:"scopes"`
+}
+
 type ServiceDiscoveryResponse struct {
-	ModulesV1 string `json:"modules.v1"`
+	ModulesV1 string      `json:"modules.v1"`
+	LoginV1   LoginConfig `json:"login.v1"`
 }
 
 // ServiceDiscovery returns a handler that returns a JSON payload for Terraform service discovery.
 // https://www.terraform.io/internals/module-registry-protocol
 func (reg *Registry) ServiceDiscovery() http.HandlerFunc {
-	spec := ServiceDiscoveryResponse{
-		ModulesV1: "/v1/modules/",
-	}
-
-	resp, err := json.Marshal(spec)
-	if err != nil {
-		reg.logger.Panic("ServiceDiscovery", zap.Errors("err", []error{err}))
-	}
-
 	return func(w http.ResponseWriter, r *http.Request) {
+		spec := ServiceDiscoveryResponse{
+			ModulesV1: "/v1/modules/",
+			LoginV1: LoginConfig{
+				Client:     reg.moduleOauth2.ClientID(),
+				GrantTypes: []string{"authz_code"},
+				Authz:      reg.moduleOauth2.Endpoint(),
+				Token:      "/oauth/token",
+				Ports:      []int{10000, 10010},
+				Scopes:     []string{"email"},
+			},
+		}
+
+		resp, err := json.Marshal(spec)
+		if err != nil {
+			reg.logger.Panic("ServiceDiscovery", zap.Errors("err", []error{err}))
+		}
+
 		if chi.URLParam(r, "name") != "terraform.json" {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
@@ -229,6 +269,18 @@ type ModuleVersionsResponseModule struct {
 
 type ModuleVersionsResponseModuleVersion struct {
 	Version string `json:"version"`
+}
+
+type TokenRequest struct {
+	ClientID     string `form:"client_id"`
+	Code         string `form:"code"`
+	CodeVerifier string `form:"code_verifier"`
+	GrantType    string `form:"grant_type"`
+	RedirectURI  string `form:"redirect_uri"`
+}
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
 }
 
 // ModuleVersions returns a handler that returns a list of available versions for a module.
@@ -289,5 +341,40 @@ func (reg *Registry) ModuleDownload() http.HandlerFunc {
 
 		w.Header().Set("X-Terraform-Get", ver.SourceURL)
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (reg *Registry) ExchangeCode() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var req TokenRequest
+		err = form.NewDecoder().Decode(&req, r.PostForm)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = reg.moduleOauth2.ValidCode(r.Context(), req.Code, req.RedirectURI, req.CodeVerifier)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		responsePayload := TokenResponse{AccessToken: reg.oauth2Token}
+		b, err := json.Marshal(responsePayload)
+		if err != nil {
+			reg.logger.Error("JsonEncode", zap.Errors("err", []error{err}))
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write(b); err != nil {
+			reg.logger.Error("ExchangeCode", zap.Errors("err", []error{err}))
+		}
 	}
 }
