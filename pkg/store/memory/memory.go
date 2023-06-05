@@ -44,6 +44,10 @@ func (s *MemoryStore) Set(key string, m []*core.ModuleVersion) {
 	s.store[key] = m
 }
 
+func (s *MemoryStore) ListModules(ctx context.Context) ([]*core.Module, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // ListModuleVersions returns a list of module versions.
 func (s *MemoryStore) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*core.ModuleVersion, error) {
 	key := fmt.Sprintf("%s/%s/%s", namespace, name, provider)

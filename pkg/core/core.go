@@ -6,6 +6,13 @@ package core
 
 import "context"
 
+type Module struct {
+	Namespace string
+	Name      string
+	Provider  string
+	Versions  []*ModuleVersion
+}
+
 type ModuleVersion struct {
 	// Version is a SemVer version string that specifies the version for a module.
 	Version string
@@ -16,6 +23,7 @@ type ModuleVersion struct {
 
 // ModuleStore is the store implementation interface for building custom stores.
 type ModuleStore interface {
+	ListModules(ctx context.Context) ([]*Module, error)
 	ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*ModuleVersion, error)
 	GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*ModuleVersion, error)
 }

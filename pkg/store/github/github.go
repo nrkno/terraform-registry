@@ -51,6 +51,11 @@ func NewGitHubStore(ownerFilter, topicFilter, accessToken string, logger *zap.Lo
 	}
 }
 
+// ListModules returns a list of all modules and their versions.
+func (s *GitHubStore) ListModules(ctx context.Context) ([]*core.Module, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // ListModuleVersions returns a list of module versions.
 func (s *GitHubStore) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*core.ModuleVersion, error) {
 	s.mut.RLock()

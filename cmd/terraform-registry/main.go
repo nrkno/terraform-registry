@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/nrkno/terraform-registry/pkg/registry"
+	localfs "github.com/nrkno/terraform-registry/pkg/store/fs" // TODO: rename to localfs
 	"github.com/nrkno/terraform-registry/pkg/store/github"
 	"go.uber.org/zap"
 )
@@ -38,6 +39,8 @@ var (
 	gitHubOwnerFilter string
 	gitHubTopicFilter string
 
+	localfsRootDir string
+
 	// > Environment variable names used by the utilities in the Shell and Utilities
 	// > volume of IEEE Std 1003.1-2001 consist solely of uppercase letters, digits,
 	// > and the '_' (underscore) from the characters defined in Portable Character
@@ -57,12 +60,14 @@ func init() {
 	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
-	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github)")
+	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github,localfs)")
 	flag.StringVar(&logLevelStr, "log-level", "info", "Levels: debug, info, warn, error")
 	flag.StringVar(&logFormatStr, "log-format", "console", "Formats: json, console")
 
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
+
+	flag.StringVar(&localfsRootDir, "localfs-root-dir", "", "Root directory for localfs store")
 
 }
 
@@ -139,6 +144,8 @@ func main() {
 	switch storeType {
 	case "github":
 		gitHubRegistry(reg)
+	case "localfs":
+		localfsRegistry(reg)
 	default:
 		logger.Fatal("invalid store type", zap.String("selected", storeType))
 	}
@@ -253,6 +260,19 @@ func gitHubRegistry(reg *registry.Registry) {
 			<-t.C
 		}
 	}()
+}
+
+func localfsRegistry(reg *registry.Registry) {
+	if localfsRootDir == "" {
+		logger.Fatal("missing value for argument -localfs-root-dir")
+	}
+	store, err := localfs.NewStore(localfsRootDir, logger.Named("localfs store"))
+	if err != nil {
+		logger.Fatal("failed to create localfs store",
+			zap.Errors("err", []error{err}),
+		)
+	}
+	reg.SetModuleStore(store)
 }
 
 // parseAuthTokens returns a map of all elements in the JSON object contained in `b`.

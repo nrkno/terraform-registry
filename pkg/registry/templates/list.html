@@ -1,0 +1,16 @@
+<!--
+SPDX-FileCopyrightText: 2023 NRK
+
+SPDX-License-Identifier: GPL-3.0-only
+-->
+
+<h2>Modules</h2>
+{{ if .Modules }}
+<ul>
+  {{ range $m := .Modules }}
+  <li><a href="/modules/{{ $m.Namespace }}/{{ $m.Name }}/{{ $m.Provider }}">{{ $m.Namespace }}/{{ $m.Name }}/{{ $m.Provider }}</a></li>
+  {{ end }}
+</ul>
+{{ else }}
+<p>No modules available</p>
+{{ end }}

@@ -2,11 +2,12 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-package memory
+package fs
 
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"regexp"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/nrkno/terraform-registry/pkg/core"
+	"go.uber.org/zap"
 )
 
 // TODO: move to core
@@ -27,18 +29,20 @@ var SemVerPattern = regexp.MustCompile(`\d+.\d+.\d+\w*`)
 // Store is an in-memory store implementation without a backend.
 // Should not be instantiated directly. Use `NewStore` instead.
 type Store struct {
-	root  string
-	store map[string][]*core.ModuleVersion
+	root   string
+	store  map[string][]*core.ModuleVersion
+	logger *zap.Logger
 }
 
-func NewStore(root string) (*Store, error) {
+func NewStore(root string, logger *zap.Logger) (*Store, error) {
 	if _, err := os.Stat(root); err != nil {
 		return nil, fmt.Errorf("failed to stat root dir: %w", err)
 	}
 
 	return &Store{
-		root:  root,
-		store: make(map[string][]*core.ModuleVersion),
+		root:   root,
+		store:  make(map[string][]*core.ModuleVersion),
+		logger: logger,
 	}, nil
 }
 
@@ -88,6 +92,43 @@ func (s *Store) Get(key string) ([]*core.ModuleVersion, error) {
 	}
 
 	return versions, nil
+}
+
+// ListModules returns a list of modules.
+func (s *Store) ListModules(ctx context.Context) ([]*core.Module, error) {
+	modules := make([]*core.Module, 0)
+	dirfs := os.DirFS(s.root)
+
+	namespaces, err := fs.ReadDir(dirfs, ".")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, nsEntry := range namespaces {
+		if !nsEntry.IsDir() {
+			continue
+		}
+
+		names, err := fs.ReadDir(dirfs, nsEntry.Name())
+		if err != nil {
+			return nil, err
+		}
+
+		for _, nameEntry := range names {
+			versions, err := s.Get(nsEntry.Name() + "/" + nameEntry.Name() + "/generic")
+			if err != nil {
+				return nil, err
+			}
+			modules = append(modules, &core.Module{
+				Namespace: nsEntry.Name(),
+				Name:      nameEntry.Name(),
+				Provider:  "generic",
+				Versions:  versions,
+			})
+		}
+	}
+
+	return modules, nil
 }
 
 // ListModuleVersions returns a list of module versions.

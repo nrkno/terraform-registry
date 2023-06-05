@@ -5,10 +5,13 @@
 package registry
 
 import (
+	"embed"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
+	"text/template"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -19,6 +22,9 @@ import (
 var (
 	// WelcomeMessage is the message returned from the index route.
 	WelcomeMessage = []byte("Terraform Registry\nhttps://github.com/nrkno/terraform-registry\n")
+
+	//go:embed templates/*.html
+	templateFS embed.FS
 )
 
 // Registry implements the Terraform HTTP registry protocol.
@@ -31,6 +37,8 @@ type Registry struct {
 	authTokens  map[string]string
 	moduleStore core.ModuleStore
 	mut         sync.RWMutex
+
+	templates *template.Template
 
 	logger *zap.Logger
 }
@@ -45,6 +53,10 @@ func NewRegistry(logger *zap.Logger) *Registry {
 		logger:         logger,
 	}
 	reg.setupRoutes()
+
+	reg.templates = template.Must(
+		template.New("all").ParseFS(templateFS, "templates/*.html"))
+
 	return reg
 }
 
@@ -166,6 +178,18 @@ func (reg *Registry) Index() http.HandlerFunc {
 		}
 		if _, err := w.Write(WelcomeMessage); err != nil {
 			reg.logger.Error("Index", zap.Errors("err", []error{err}))
+		}
+
+		locals := struct {
+			Modules []*core.Module
+		}{
+			Modules: []*core.Module{
+				&core.Module{"foo", "bar", "baz", nil},
+			},
+		}
+
+		if err := reg.templates.ExecuteTemplate(w, "list.html", locals); err != nil {
+			log.Printf("error: template: %v", err)
 		}
 	}
 }

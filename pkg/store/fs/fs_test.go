@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-package memory
+package fs
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/matryer/is"
 	"github.com/nrkno/terraform-registry/pkg/core"
+	"go.uber.org/zap"
 )
 
 func TestGet(t *testing.T) {
@@ -26,7 +27,7 @@ func TestGet(t *testing.T) {
 	is.NoErr(err)
 	defer os.RemoveAll(root) // clean up
 
-	s, err := NewStore(root)
+	s, err := NewStore(root, zap.NewNop())
 	is.NoErr(err)
 
 	// Tag 3 versions of a new module
@@ -53,6 +54,45 @@ func TestGet(t *testing.T) {
 	})
 }
 
+func TestListModules(t *testing.T) {
+	is := is.New(t)
+
+	root, err := os.MkdirTemp("", "terraform-registry-test-*")
+	is.NoErr(err)
+	defer os.RemoveAll(root) // clean up
+
+	s, err := NewStore(root, zap.NewNop())
+	is.NoErr(err)
+
+	t.Run("returns an empty list of modules", func(t *testing.T) {
+		is := is.New(t)
+		versions, err := s.ListModules(context.TODO())
+		is.NoErr(err)
+		is.Equal(len(versions), 3)
+		//is.Equal(versions[1].Version, "v1.2.3")
+	})
+
+	createOrUpdateModuleRepoWithTag(t, root, "namespaceA", "module1", "v1.0.0")
+	createOrUpdateModuleRepoWithTag(t, root, "namespaceB", "module2", "v1.0.0")
+	createOrUpdateModuleRepoWithTag(t, root, "namespaceC", "module3", "v1.0.0")
+
+	t.Run("returns a list of modules", func(t *testing.T) {
+		is := is.New(t)
+		modules, err := s.ListModules(context.TODO())
+		is.NoErr(err)
+		is.Equal(len(modules), 3)
+
+		is.Equal(modules[0].Namespace, "namespaceA")
+		is.Equal(len(modules[0].Versions), 1)
+
+		is.Equal(modules[1].Namespace, "namespaceB")
+		is.Equal(len(modules[1].Versions), 1)
+
+		is.Equal(modules[2].Namespace, "namespaceC")
+		is.Equal(len(modules[2].Versions), 1)
+	})
+}
+
 func TestListModuleVersions(t *testing.T) {
 	is := is.New(t)
 
@@ -60,7 +100,7 @@ func TestListModuleVersions(t *testing.T) {
 	is.NoErr(err)
 	defer os.RemoveAll(root) // clean up
 
-	s, err := NewStore(root)
+	s, err := NewStore(root, zap.NewNop())
 	is.NoErr(err)
 
 	createOrUpdateModuleRepoWithTag(t, root, "namespace", "module1", "v1.0.0")
@@ -90,7 +130,7 @@ func TestGetModuleVersion(t *testing.T) {
 	is.NoErr(err)
 	defer os.RemoveAll(root) // clean up
 
-	s, err := NewStore(root)
+	s, err := NewStore(root, zap.NewNop())
 	is.NoErr(err)
 
 	createOrUpdateModuleRepoWithTag(t, root, "namespace", "module1", "v1.0.0")
