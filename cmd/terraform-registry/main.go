@@ -19,6 +19,7 @@ import (
 
 	"github.com/nrkno/terraform-registry/pkg/registry"
 	"github.com/nrkno/terraform-registry/pkg/store/github"
+	"github.com/nrkno/terraform-registry/pkg/store/s3"
 	"go.uber.org/zap"
 )
 
@@ -33,6 +34,9 @@ var (
 	storeType      string
 	logLevelStr    string
 	logFormatStr   string
+
+	s3Region string
+	s3Bucket string
 
 	gitHubToken       string
 	gitHubOwnerFilter string
@@ -63,7 +67,6 @@ func init() {
 
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
-
 }
 
 func main() {
@@ -110,6 +113,7 @@ func main() {
 
 	// Load environment variables here!
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
+	s3Region = os.Getenv("S3_REGION")
 
 	reg := registry.NewRegistry(logger)
 	reg.IsAuthDisabled = authDisabled
@@ -139,6 +143,8 @@ func main() {
 	switch storeType {
 	case "github":
 		gitHubRegistry(reg)
+	case "s3":
+		s3Registry(reg)
 	default:
 		logger.Fatal("invalid store type", zap.String("selected", storeType))
 	}
@@ -253,6 +259,24 @@ func gitHubRegistry(reg *registry.Registry) {
 			<-t.C
 		}
 	}()
+}
+
+// s3Registry configures the registry to use S3Store.
+func s3Registry(reg *registry.Registry) {
+	store, err := s3.NewS3Store("", "", "", "", logger.Named("s3 store"))
+	if err != nil {
+		logger.Fatal("failed to create S3 store",
+			zap.Errors("err", []error{err}),
+		)
+	}
+	reg.SetModuleStore(store)
+
+	logger.Debug("loading S3 store cache")
+	if err := store.ReloadCache(context.Background()); err != nil {
+		logger.Error("failed to load S3 store cache",
+			zap.Errors("err", []error{err}),
+		)
+	}
 }
 
 // parseAuthTokens returns a map of all elements in the JSON object contained in `b`.
