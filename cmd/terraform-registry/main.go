@@ -37,8 +37,7 @@ var (
 
 	awsAccessKeyID     string
 	awsSecretAccessKey string
-	awsS3BucketName    string
-	awsS3Prefix        string
+	awsS3Bucket        string
 
 	gitHubToken       string
 	gitHubOwnerFilter string
@@ -118,8 +117,7 @@ func main() {
 
 	awsAccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
 	awsSecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
-	awsS3BucketName = os.Getenv("AWS_S3_BUCKET_NAME")
-	awsS3Prefix = os.Getenv("AWS_S3_PREFIX")
+	awsS3Bucket = os.Getenv("AWS_S3_BUCKET")
 
 	reg := registry.NewRegistry(logger)
 	reg.IsAuthDisabled = authDisabled
@@ -275,11 +273,11 @@ func s3Registry(reg *registry.Registry) {
 	if awsSecretAccessKey == "" {
 		logger.Fatal("missing environment variable 'AWS_SECRET_ACCESS_KEY'")
 	}
-	if awsS3BucketName == "" {
+	if awsS3Bucket == "" {
 		logger.Fatal("missing environment variable 'AWS_S3_BUCKET_NAME'")
 	}
 
-	store, err := s3.NewS3Store(awsS3BucketName, awsS3Prefix, logger.Named("s3 store"))
+	store, err := s3.NewS3Store(awsS3Bucket, logger.Named("s3 store"))
 	if err != nil {
 		logger.Fatal("failed to create S3 store",
 			zap.Errors("err", []error{err}),
