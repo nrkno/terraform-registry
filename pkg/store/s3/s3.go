@@ -52,7 +52,7 @@ func NewS3Store(bucket string, logger *zap.Logger) (*S3Store, error) {
 }
 
 func (s *S3Store) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*core.ModuleVersion, error) {
-	moduleVersions, err := s.genModuleVersionList(namespace, name, provider, "")
+	moduleVersions, err := s.listModuleVersions(namespace, name, provider, "")
 	if err != nil {
 		return moduleVersions, err
 	}
@@ -60,10 +60,13 @@ func (s *S3Store) ListModuleVersions(ctx context.Context, namespace, name, provi
 }
 
 func (s *S3Store) GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*core.ModuleVersion, error) {
-	moduleVersions, err := s.genModuleVersionList(namespace, name, provider, version)
-	moduleVersion := moduleVersions[0]
+	moduleVersions, err := s.listModuleVersions(namespace, name, provider, version)
+	moduleVersion := &core.ModuleVersion{}
 	if err != nil {
 		return moduleVersion, err
+	}
+	if len(moduleVersions) > 0 {
+		moduleVersion = moduleVersions[0]
 	}
 	return moduleVersion, nil
 }
@@ -72,43 +75,43 @@ func (s *S3Store) ReloadCache(ctx context.Context) error {
 	return nil
 }
 
-func (s *S3Store) genModuleVersionList(namespace, name, provider, version string) ([]*core.ModuleVersion, error) {
-	versions := make([]*core.ModuleVersion, 0)
+func (s *S3Store) listModuleVersions(namespace, name, provider, version string) ([]*core.ModuleVersion, error) {
+	moduleVersions := make([]*core.ModuleVersion, 0)
 
 	maxKeys := aws.Int64(100)
-	if version == "" {
+	if version != "" {
 		maxKeys = aws.Int64(1)
 	}
 
-	modulePath := filepath.Join(s.bucket, namespace, name, provider, version)
+	moduleLocation := filepath.Join(s.bucket, namespace, name, provider, version)
 	in := &s3.ListObjectsV2Input{
-		Bucket:  &modulePath,
+		Bucket:  &moduleLocation,
 		MaxKeys: maxKeys,
 	}
 	out, err := s.client.ListObjectsV2(in)
 	if err != nil {
-		return versions, err
+		return moduleVersions, err
 	}
 
 	keyCount := *out.KeyCount
 	if keyCount == 0 {
-		return versions, nil
+		return moduleVersions, nil
 	}
 
 	contents := out.Contents
-	for _, o := range contents {
-		version := o.Key
-		moduleVersionPath := filepath.Join(modulePath, *version)
-		versions = append(versions, &core.ModuleVersion{
-			Version:   *version,
-			SourceURL: genModSrcURL(moduleVersionPath, "zip"),
+	for _, c := range contents {
+		moduleVersion := c.Key
+		moduleVersionLocation := filepath.Join(moduleLocation, *moduleVersion)
+		moduleVersions = append(moduleVersions, &core.ModuleVersion{
+			Version:   *moduleVersion,
+			SourceURL: createModuleSrcURL(moduleVersionLocation, "zip"),
 		})
 	}
 
-	return versions, nil
+	return moduleVersions, nil
 }
 
-func genModSrcURL(location, extension string) string {
+func createModuleSrcURL(location, extension string) string {
 	location = strings.TrimSuffix(location, "/")
 	extension = strings.TrimPrefix(extension, ".")
 	return fmt.Sprintf("s3::%s.%s", location, extension)
