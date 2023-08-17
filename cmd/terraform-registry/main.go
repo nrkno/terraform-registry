@@ -37,6 +37,7 @@ var (
 
 	awsAccessKeyID     string
 	awsSecretAccessKey string
+	awsRegion          string
 	awsS3Bucket        string
 
 	gitHubToken       string
@@ -117,6 +118,7 @@ func main() {
 
 	awsAccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
 	awsSecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	awsRegion = os.Getenv("AWS_REGION")
 	awsS3Bucket = os.Getenv("AWS_S3_BUCKET")
 
 	reg := registry.NewRegistry(logger)
@@ -272,6 +274,9 @@ func s3Registry(reg *registry.Registry) {
 	}
 	if awsSecretAccessKey == "" {
 		logger.Fatal("missing environment variable 'AWS_SECRET_ACCESS_KEY'")
+	}
+	if awsRegion == "" {
+		logger.Fatal("missing environment variable 'AWS_REGION'")
 	}
 	if awsS3Bucket == "" {
 		logger.Fatal("missing environment variable 'AWS_S3_BUCKET_NAME'")
