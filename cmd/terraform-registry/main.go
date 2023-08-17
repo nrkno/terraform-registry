@@ -62,7 +62,7 @@ func init() {
 	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
-	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github)")
+	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github, s3)")
 	flag.StringVar(&logLevelStr, "log-level", "info", "Levels: debug, info, warn, error")
 	flag.StringVar(&logFormatStr, "log-format", "console", "Formats: json, console")
 
