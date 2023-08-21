@@ -23,7 +23,7 @@ type S3Store struct {
 }
 
 func NewS3Store(bucket string, logger *zap.Logger) (*S3Store, error) {
-	store := &S3Store{}
+	s := &S3Store{}
 
 	if logger == nil {
 		logger = zap.NewNop()
@@ -31,88 +31,89 @@ func NewS3Store(bucket string, logger *zap.Logger) (*S3Store, error) {
 
 	sess, err := session.NewSession()
 	if err != nil {
-		return store, fmt.Errorf("session creation failed: %s", err)
+		return s, fmt.Errorf("session creation failed: %s", err)
 	}
 	logger.Debug("session created successfully")
 
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
-		return store, fmt.Errorf("session credentials not found: %s", err)
+		return s, fmt.Errorf("session credentials not found: %s", err)
 	}
 	logger.Debug("session credentials found")
 
-	store = &S3Store{
+	s = &S3Store{
 		client: s3.New(sess),
 		cache:  make(map[string][]*core.ModuleVersion),
 		bucket: bucket,
 	}
 	logger.Debug("s3 client created successfully")
 
-	return store, nil
+	return s, nil
 }
 
 func (s *S3Store) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*core.ModuleVersion, error) {
-	moduleVersions, err := s.listModuleVersions(namespace, name, provider, "")
+	mvs := make([]*core.ModuleVersion, 0)
+	mp := filepath.Join(namespace, name, provider)
+
+	out, err := s.client.ListObjectsV2(&s3.ListObjectsV2Input{
+		Bucket:     aws.String(s.bucket),
+		Prefix:     aws.String(mp),
+		StartAfter: aws.String(mp + "/"),
+	})
 	if err != nil {
-		return moduleVersions, err
+		return mvs, err
 	}
-	return moduleVersions, nil
+
+	kc := *out.KeyCount
+	if kc == 0 {
+		return mvs, nil
+	}
+
+	cs := out.Contents
+	for _, o := range cs {
+		k := o.Key
+		if strings.HasSuffix(*k, "/") {
+			v := strings.TrimPrefix(*k, mp+"/")
+			v = strings.TrimSuffix(v, "/")
+			mvs = append(mvs, &core.ModuleVersion{
+				Version:   v,
+				SourceURL: fmt.Sprintf("s3::https://s3.s3.amazonaws.com/%s/%s.zip", *k, v),
+			})
+		}
+	}
+
+	return mvs, nil
 }
 
 func (s *S3Store) GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*core.ModuleVersion, error) {
-	moduleVersions, err := s.listModuleVersions(namespace, name, provider, version)
-	moduleVersion := &core.ModuleVersion{}
+	mv := &core.ModuleVersion{}
+	mp := filepath.Join(namespace, name, provider, version)
+
+	out, err := s.client.ListObjectsV2(&s3.ListObjectsV2Input{
+		Bucket:     aws.String(s.bucket),
+		Prefix:     aws.String(mp),
+		StartAfter: aws.String(mp + "/"),
+	})
 	if err != nil {
-		return moduleVersion, err
+		return mv, err
 	}
-	if len(moduleVersions) > 0 {
-		moduleVersion = moduleVersions[0]
+
+	kc := *out.KeyCount
+	if kc == 0 {
+		return mv, nil
 	}
-	return moduleVersion, nil
+
+	k := *out.Contents[0].Key
+	if strings.HasSuffix(k, ".zip") {
+		mv = &core.ModuleVersion{
+			Version:   version,
+			SourceURL: fmt.Sprintf("s3::https://s3.s3.amazonaws.com/%s/%s.zip", mp, version),
+		}
+	}
+
+	return mv, nil
 }
 
 func (s *S3Store) ReloadCache(ctx context.Context) error {
 	return nil
-}
-
-func (s *S3Store) listModuleVersions(namespace, name, provider, version string) ([]*core.ModuleVersion, error) {
-	moduleVersions := make([]*core.ModuleVersion, 0)
-
-	maxKeys := aws.Int64(100)
-	if version != "" {
-		maxKeys = aws.Int64(1)
-	}
-
-	moduleLocation := filepath.Join(s.bucket, namespace, name, provider, version)
-	in := &s3.ListObjectsV2Input{
-		Bucket:  &moduleLocation,
-		MaxKeys: maxKeys,
-	}
-	out, err := s.client.ListObjectsV2(in)
-	if err != nil {
-		return moduleVersions, err
-	}
-
-	keyCount := *out.KeyCount
-	if keyCount == 0 {
-		return moduleVersions, nil
-	}
-
-	contents := out.Contents
-	for _, c := range contents {
-		moduleVersion := c.Key
-		moduleVersionLocation := filepath.Join(moduleLocation, *moduleVersion)
-		moduleVersions = append(moduleVersions, &core.ModuleVersion{
-			Version:   *moduleVersion,
-			SourceURL: createModuleSrcURL(moduleVersionLocation, "zip"),
-		})
-	}
-
-	return moduleVersions, nil
-}
-
-func createModuleSrcURL(location, extension string) string {
-	location = strings.TrimSuffix(location, "/")
-	extension = strings.TrimPrefix(extension, ".")
-	return fmt.Sprintf("s3::%s.%s", location, extension)
 }
