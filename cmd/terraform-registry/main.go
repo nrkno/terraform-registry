@@ -117,8 +117,6 @@ func main() {
 	// Load environment variables here!
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
 
-	awsAccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
-	awsSecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
 	awsRegion = os.Getenv("AWS_REGION")
 	awsS3Bucket = os.Getenv("AWS_S3_BUCKET")
 
@@ -270,12 +268,6 @@ func gitHubRegistry(reg *registry.Registry) {
 
 // s3Registry configures the registry to use S3Store.
 func s3Registry(reg *registry.Registry) {
-	if awsAccessKeyID == "" {
-		logger.Fatal("missing environment variable 'AWS_ACCESS_KEY_ID'")
-	}
-	if awsSecretAccessKey == "" {
-		logger.Fatal("missing environment variable 'AWS_SECRET_ACCESS_KEY'")
-	}
 	if awsRegion == "" {
 		logger.Fatal("missing environment variable 'AWS_REGION'")
 	}
