@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2022 NRK
+# SPDX-FileCopyrightText: 2023 NRK
 #
 # SPDX-License-Identifier: GPL-3.0-only
 

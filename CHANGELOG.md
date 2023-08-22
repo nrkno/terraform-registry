@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2023 NRK
+
+SPDX-License-Identifier: GPL-3.0-only
+-->
+
 # Changelog
 
 ## [0.15.0](https://github.com/nrkno/terraform-registry/compare/v0.14.0...v0.15.0) (2023-03-17)
