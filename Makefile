@@ -6,28 +6,37 @@ BINARY_NAME := ./terraform-registry
 CMD_SOURCE  := ./cmd/terraform-registry
 DOCKER_TAG  := terraform-registry
 
-build:
+.PHONY: all
+all : reuse build test
+
+.PHONY: build
+build :
 	go build $(GO_FLAGS) -buildvcs=false -o ${BINARY_NAME} ${CMD_SOURCE}
 
-build-docker:
+.PHONY: build-docker
+build-docker :
 	docker build . -t $(DOCKER_TAG)
 
-test:
+.PHONY: test
+test :
 	go test ./... -timeout 10s
 
-run:
+.PHONY: run
+run :
 	go run ${CMD_SOURCE}
 
-reuse:
+.PHONY: reuse
+reuse :
 	find . -type f \
 		| grep -vP '^(./.git|./.reuse|./LICENSES/|./terraform-registry)' \
 		| grep -vP '(/\.git/|/\.terraform/)' \
 		| grep -vP '(\\.tf)$$' \
 		| xargs reuse addheader --license GPL-3.0-only --copyright NRK --year `date +%Y` --skip-unrecognised
-	find . -type f -name '*.tf' \
+		find . -type f -name '*.tf' \
 		| grep -vP '(/\.git/|/\.terraform/)' \
 		| xargs reuse addheader --license GPL-3.0-only --copyright NRK --year `date +%Y` --style python
 
-clean:
+.PHONY: clean
+clean :
 	go clean
 	rm ${BINARY_NAME}
