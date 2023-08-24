@@ -77,7 +77,7 @@ func (s *S3Store) ListModuleVersions(ctx context.Context, namespace, name, provi
 			v = strings.TrimSuffix(v, "/")
 			mvs = append(mvs, &core.ModuleVersion{
 				Version:   v,
-				SourceURL: fmt.Sprintf("s3::https://s3.s3.amazonaws.com/%s/%s.zip", *k, v),
+				SourceURL: fmt.Sprintf("s3::https://s3.amazonaws.com/%s/%s.zip", *k, v),
 			})
 		}
 	}
@@ -107,7 +107,7 @@ func (s *S3Store) GetModuleVersion(ctx context.Context, namespace, name, provide
 	if strings.HasSuffix(k, ".zip") {
 		mv = &core.ModuleVersion{
 			Version:   version,
-			SourceURL: fmt.Sprintf("s3::https://s3.s3.amazonaws.com/%s/%s.zip", mp, version),
+			SourceURL: fmt.Sprintf("s3::https://s3.amazonaws.com/%s/%s.zip", mp, version),
 		}
 	}
 
