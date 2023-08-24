@@ -51,9 +51,12 @@ func NewS3Store(bucket string, logger *zap.Logger) (*S3Store, error) {
 	return s, nil
 }
 
-func (s *S3Store) ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*core.ModuleVersion, error) {
+func (s *S3Store) ListModuleVersions(ctx context.Context, namespace, name, system string) ([]*core.ModuleVersion, error) {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+
 	mvs := make([]*core.ModuleVersion, 0)
-	mp := filepath.Join(namespace, name, provider)
+	mp := filepath.Join(namespace, name, system)
 
 	out, err := s.client.ListObjectsV2(&s3.ListObjectsV2Input{
 		Bucket:     aws.String(s.bucket),
@@ -85,9 +88,12 @@ func (s *S3Store) ListModuleVersions(ctx context.Context, namespace, name, provi
 	return mvs, nil
 }
 
-func (s *S3Store) GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*core.ModuleVersion, error) {
+func (s *S3Store) GetModuleVersion(ctx context.Context, namespace, name, system, version string) (*core.ModuleVersion, error) {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+
 	mv := &core.ModuleVersion{}
-	mp := filepath.Join(namespace, name, provider, version)
+	mp := filepath.Join(namespace, name, system, version)
 
 	out, err := s.client.ListObjectsV2(&s3.ListObjectsV2Input{
 		Bucket:     aws.String(s.bucket),
