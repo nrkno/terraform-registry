@@ -15,7 +15,7 @@ jobs:
         tests: ["FuzzTokenAuth;./pkg/registry;60s", "FuzzRoutes;./pkg/registry;60s"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: "go.mod"
