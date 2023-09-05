@@ -15,8 +15,8 @@ jobs:
         tests: ["FuzzTokenAuth;./pkg/registry;60s", "FuzzRoutes;./pkg/registry;60s"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v3.6.0
+      - uses: actions/setup-go@v4.1.0
         with:
           go-version-file: "go.mod"
       - name: Fuzz test
@@ -28,12 +28,12 @@ jobs:
           go test "${pkg}" -fuzztime="${timeout}" -fuzz="${test}"
       - name: Upload fuzz failure seed corpus as run artifact
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.2
         with:
           name: testdata
           path: pkg/registry/testdata
       - name: Report failure
-        uses: actions/github-script@v6
+        uses: actions/github-script@v6.4.1
         if: failure() && github.event_name == 'pull_request'
         with:
           script: |
