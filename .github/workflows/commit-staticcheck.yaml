@@ -6,8 +6,8 @@ jobs:
   staticcheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v3.6.0
+      - uses: actions/setup-go@v4.1.0
         with:
           go-version-file: "go.mod"
         id: setup-go
