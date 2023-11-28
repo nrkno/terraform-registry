@@ -14,7 +14,7 @@ require (
 	github.com/matryer/is v1.4.1
 	github.com/migueleliasweb/go-github-mock v0.0.22
 	go.uber.org/zap v1.26.0
-	golang.org/x/oauth2 v0.14.0
+	golang.org/x/oauth2 v0.15.0
 )
 
 require (
@@ -23,8 +23,8 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/crypto v0.15.0 // indirect
-	golang.org/x/net v0.18.0 // indirect
+	golang.org/x/crypto v0.16.0 // indirect
+	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
