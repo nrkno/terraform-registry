@@ -31,6 +31,7 @@ Supported Terraform protocols:
 Supported backends:
 - `MemoryStore`: a dumb in-memory store currently only used for testing
 - [`GitHubStore`](#github-store): queries the GitHub API for modules, version tags and SSH download URLs
+- [`S3Store`](#S3-store): queries a S3 bucket for modules, version tags and HTTPS download URLs
 
 Authentication:
 - Reads a set of tokens from a file and authenticates requests based on the
@@ -112,6 +113,30 @@ Environment variables:
 Command line arguments:
 - `-github-owner-filter`: GitHub org/user repository filter
 - `-github-topic-filter`: GitHub topic repository filter
+
+### S3 Store
+
+This store uses S3 as a backend. A query for the module address
+`namespace/name/provider` will be translated directly to a S3 bucket key.
+This request happens server side and either a list of modules will be returned
+or a link to a s3 bucket for the terraform client to use.
+Required permissions for the registry: `s3:ListBucket`
+Requests to download are authenticated by S3 using credentials on the client side.
+Required permissions for registry clients: `s3:GetObject`
+[terraform S3 configuration]: (https://developer.hashicorp.com/terraform/language/modules/sources#s3-bucket)
+
+Version strings are matched with [repository topics][]. Upon loading the list of
+repositories, tags prefixed with `v` will have their prefix removed.
+Storage of modules in S3 must match `namespace/name/provider/v1.2.3/v1.2.3.zip`
+I.e., a repository tag `v1.2.3` will be made available as version `1.2.3`.
+
+No verification is performed to check if the repo actually contains Terraform
+modules. This is left for Terraform to determine.
+
+Command line arguments:
+- `-store s3`: Switch store to S3
+- `-s3-region`: Region such as us-east-1
+- `-s3-bucket`: S3 bucket name
 
 [repository topics]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics
 

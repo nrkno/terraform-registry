@@ -18,8 +18,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/nrkno/terraform-registry/pkg/registry"
 	"github.com/nrkno/terraform-registry/pkg/store/github"
+	"github.com/nrkno/terraform-registry/pkg/store/s3"
 	"go.uber.org/zap"
 )
 
@@ -36,6 +39,9 @@ var (
 	storeType             string
 	logLevelStr           string
 	logFormatStr          string
+
+	S3Region string
+	S3Bucket string
 
 	gitHubToken       string
 	gitHubOwnerFilter string
@@ -62,13 +68,15 @@ func init() {
 	flag.BoolVar(&tlsEnabled, "tls-enabled", false, "")
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
-	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github)")
+	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github, s3)")
 	flag.StringVar(&logLevelStr, "log-level", "info", "Levels: debug, info, warn, error")
 	flag.StringVar(&logFormatStr, "log-format", "console", "Formats: json, console")
 
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
 
+	flag.StringVar(&S3Region, "s3-region", "", "S3 region such as us-east-1")
+	flag.StringVar(&S3Bucket, "s3-bucket", "", "S3 bucket name")
 }
 
 func main() {
@@ -148,6 +156,8 @@ func main() {
 	switch storeType {
 	case "github":
 		gitHubRegistry(reg)
+	case "s3":
+		s3Registry(reg)
 	default:
 		logger.Fatal("invalid store type", zap.String("selected", storeType))
 	}
@@ -262,6 +272,36 @@ func gitHubRegistry(reg *registry.Registry) {
 			<-t.C
 		}
 	}()
+}
+
+// s3Registry configures the registry to use S3Store.
+func s3Registry(reg *registry.Registry) {
+	if S3Region == "" {
+		logger.Fatal("Missing flag '-s3-region'")
+	}
+	if S3Bucket == "" {
+		logger.Fatal("Missing flag '-s3-bucket'")
+	}
+
+	sess, err := session.NewSession()
+	if err != nil {
+		logger.Fatal("AWS session creation failed")
+	}
+	logger.Debug("AWS session created successfully")
+
+	_, err = sess.Config.Credentials.Get()
+	if err != nil {
+		logger.Fatal("AWS session credentials not found")
+	}
+	s3Sess := awss3.New(sess)
+
+	store := s3.NewS3Store(s3Sess, S3Region, S3Bucket, logger.Named("s3 store"))
+	if err != nil {
+		logger.Fatal("failed to create S3 store",
+			zap.Errors("err", []error{err}),
+		)
+	}
+	reg.SetModuleStore(store)
 }
 
 // parseAuthTokens returns a map of all elements in the JSON object contained in `b`.
