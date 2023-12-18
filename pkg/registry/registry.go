@@ -28,6 +28,8 @@ var (
 type Registry struct {
 	// Whether to disable auth
 	IsAuthDisabled bool
+	// Whether to disable HTTP access log
+	IsAccessLogDisabled bool
 
 	router      *chi.Mux
 	authTokens  map[string]string
@@ -109,6 +111,11 @@ func (reg *Registry) setupRoutes() {
 func (reg *Registry) RequestLogger() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if reg.IsAccessLogDisabled {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			wr := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 			t1 := time.Now()
 			defer func() {
