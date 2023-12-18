@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -83,7 +84,7 @@ func (reg *Registry) SetAuthTokens(authTokens map[string]string) {
 // setupRoutes initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
 func (reg *Registry) setupRoutes() {
 	reg.router = chi.NewRouter()
-	reg.router.Use(middleware.Logger)
+	reg.router.Use(reg.RequestLogger())
 	reg.router.NotFound(reg.NotFound())
 	reg.router.MethodNotAllowed(reg.MethodNotAllowed())
 	reg.router.Get("/", reg.Index())
@@ -97,6 +98,44 @@ func (reg *Registry) setupRoutes() {
 		r.Get("/modules/{namespace}/{name}/{provider}/{version}/download", reg.ModuleDownload())
 	})
 }
+
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: MIT
+// SPDX-SnippetCopyrightText: Copyright (c) 2021  Manfred Touron <oss@moul.io> (manfred.life)
+// SDPX—SnippetName: Function to configure Zap logger with Chi HTTP router
+// SPDX-SnippetComment: Original work at https://github.com/moul/chizap/blob/0ebf11a6a5535e3c6bb26f1236b2833ae7825675/chizap.go. All further changes are licensed under this file's main license.
+
+// Request logger for Chi using Zap as the logger.
+func (reg *Registry) RequestLogger() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			wr := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			t1 := time.Now()
+			defer func() {
+				ua := wr.Header().Get("User-Agent")
+				if ua == "" {
+					ua = r.Header.Get("User-Agent")
+				}
+
+				reqLogger := reg.logger.With(
+					zap.String("proto", r.Proto),
+					zap.String("method", r.Method),
+					zap.String("path", r.URL.Path),
+					zap.Int("size", wr.BytesWritten()),
+					zap.Int("status", wr.Status()),
+					zap.String("reqId", middleware.GetReqID(r.Context())),
+					zap.Duration("responseTimeNSec", time.Since(t1)),
+					zap.String("userAgent", ua),
+				)
+
+				reqLogger.Info("HTTP request")
+			}()
+			next.ServeHTTP(wr, r)
+		})
+	}
+}
+
+// SPDX-SnippetEnd
 
 func (reg *Registry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reg.router.ServeHTTP(w, r)
