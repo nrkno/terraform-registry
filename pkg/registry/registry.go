@@ -8,6 +8,7 @@ package registry
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +31,8 @@ type Registry struct {
 	IsAuthDisabled bool
 	// Whether to disable HTTP access log
 	IsAccessLogDisabled bool
+	// Paths to ignore request logging for
+	AccessLogIgnoredPaths []string
 
 	router      *chi.Mux
 	authTokens  map[string]string
@@ -112,6 +115,11 @@ func (reg *Registry) RequestLogger() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if reg.IsAccessLogDisabled {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if slices.Contains(reg.AccessLogIgnoredPaths, r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
