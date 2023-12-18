@@ -59,6 +59,7 @@ store specific ones.
 
 Command line arguments:
 - `-access-log-disabled`: Disable HTTP access log (default: `false`)
+- `-access-log-ignored-paths`: Ignore certain request paths from being logged (default: `""`)
 - `-listen-addr`: HTTP server bind address (default: `:8080`)
 - `-auth-disabled`: Disable HTTP bearer token authentication (default: `false`)
 - `-auth-tokens-file`: JSON encoded file containing a map of auth token
