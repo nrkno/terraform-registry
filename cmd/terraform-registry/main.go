@@ -24,16 +24,17 @@ import (
 )
 
 var (
-	listenAddr     string
-	authDisabled   bool
-	authTokensFile string
-	envJSONFiles   string
-	tlsEnabled     bool
-	tlsCertFile    string
-	tlsKeyFile     string
-	storeType      string
-	logLevelStr    string
-	logFormatStr   string
+	listenAddr        string
+	accessLogDisabled bool
+	authDisabled      bool
+	authTokensFile    string
+	envJSONFiles      string
+	tlsEnabled        bool
+	tlsCertFile       string
+	tlsKeyFile        string
+	storeType         string
+	logLevelStr       string
+	logFormatStr      string
 
 	gitHubToken       string
 	gitHubOwnerFilter string
@@ -52,6 +53,7 @@ var (
 
 func init() {
 	flag.StringVar(&listenAddr, "listen-addr", ":8080", "")
+	flag.BoolVar(&accessLogDisabled, "access-log-disabled", false, "")
 	flag.BoolVar(&authDisabled, "auth-disabled", false, "")
 	flag.StringVar(&authTokensFile, "auth-tokens-file", "", "JSON encoded file containing a map of auth token descriptions and tokens.")
 	flag.StringVar(&envJSONFiles, "env-json-files", "", "Comma-separated list of paths to JSON encoded files containing a map of environment variable names and values to set. Converts the keys to uppercase and replaces all occurences of '-' with '_'. E.g. prefix filepaths with 'myprefix_:' to prefix all keys in the file with 'MYPREFIX_' before they are set.")
@@ -113,6 +115,7 @@ func main() {
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
 
 	reg := registry.NewRegistry(logger)
+	reg.IsAccessLogDisabled = accessLogDisabled
 	reg.IsAuthDisabled = authDisabled
 
 	// Configure authentication
