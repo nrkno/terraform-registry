@@ -16,7 +16,7 @@ RUN go mod download -x
 COPY . /go/src/app
 RUN make GO_FLAGS="-buildvcs=false" test build
 
-FROM gcr.io/distroless/base-debian11
+FROM gcr.io/distroless/base-debian12
 COPY --from=build /go/src/app/terraform-registry /bin/
 COPY --from=build /usr/local/bin/dumb-init /bin/
 USER nonroot
