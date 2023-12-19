@@ -6,6 +6,15 @@ SPDX-License-Identifier: GPL-3.0-only
 
 # Changelog
 
+## [0.16.0](https://github.com/nrkno/terraform-registry/compare/v0.15.0...v0.16.0) (2023-12-19)
+
+
+### Features
+
+* allow disabling HTTP access log ([dafa222](https://github.com/nrkno/terraform-registry/commit/dafa222aa39964ae676a3e0f4a89b13d2833c2fe)), closes [#63](https://github.com/nrkno/terraform-registry/issues/63)
+* allow ignoring certain paths from access log ([7c48d2f](https://github.com/nrkno/terraform-registry/commit/7c48d2f2f7587de41cbdbb6a43b992c2fbcd4c4b))
+* use zap for http access logging ([df72911](https://github.com/nrkno/terraform-registry/commit/df7291144fd4972198ddb134afe1cdb8c5661598)), closes [#54](https://github.com/nrkno/terraform-registry/issues/54)
+
 ## [0.15.0](https://github.com/nrkno/terraform-registry/compare/v0.14.0...v0.15.0) (2023-03-17)
 
 
