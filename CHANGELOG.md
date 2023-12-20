@@ -6,6 +6,13 @@ SPDX-License-Identifier: GPL-3.0-only
 
 # Changelog
 
+## [0.17.0](https://github.com/nrkno/terraform-registry/compare/v0.16.0...v0.17.0) (2023-12-20)
+
+
+### Features
+
+* Add support for s3 as a backend store ([3619ebe](https://github.com/nrkno/terraform-registry/commit/3619ebe23f61442d6695002748bacd46aa89f1c1))
+
 ## [0.16.0](https://github.com/nrkno/terraform-registry/compare/v0.15.0...v0.16.0) (2023-12-19)
 
 
