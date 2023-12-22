@@ -78,10 +78,8 @@ func TestGetModuleVersion(t *testing.T) {
 		is := is.New(t)
 		ver, err := s.GetModuleVersion(context.TODO(), "foo", "bar", "baz", "2")
 		is.NoErr(err)
-		is.Equal(ver.Version, "2")
-
-		// Reminder to update tests when we populate SourceURL later on
-		is.Equal(ver.SourceURL, "")
+		is.Equal(ver.Version, "2")  // version number
+		is.Equal(ver.SourceURL, "") // source url
 	})
 
 	t.Run("errs when missing", func(t *testing.T) {

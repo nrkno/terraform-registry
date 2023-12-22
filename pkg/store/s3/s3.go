@@ -3,6 +3,7 @@ package s3
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -143,4 +144,8 @@ func isValidModuleSourcePath(path string) bool {
 	addrRegExp := `\w+/\w+/\w+`
 	r := regexp.MustCompile("^" + addrRegExp + "/" + verRegExp)
 	return r.MatchString(path)
+}
+
+func (s *S3Store) GetModuleVersionSource(ctx context.Context, namespace, name, system, version string) (*core.ModuleVersion, fs.File, error) {
+	return nil, nil, fmt.Errorf("not implemented")
 }

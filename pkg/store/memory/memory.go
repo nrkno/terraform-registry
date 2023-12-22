@@ -8,6 +8,7 @@ package memory
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"sync"
 
 	"github.com/nrkno/terraform-registry/pkg/core"
@@ -71,4 +72,8 @@ func (s *MemoryStore) GetModuleVersion(ctx context.Context, namespace, name, pro
 	}
 
 	return nil, fmt.Errorf("version '%s' not found for module '%s'", version, key)
+}
+
+func (s *MemoryStore) GetModuleVersionSource(ctx context.Context, namespace, name, system, version string) (*core.ModuleVersion, fs.File, error) {
+	return nil, nil, fmt.Errorf("not implemented")
 }

@@ -8,6 +8,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"strings"
 	"sync"
 
@@ -199,4 +200,8 @@ func (s *GitHubStore) searchRepositories(ctx context.Context) ([]*github.Reposit
 	}
 
 	return allRepos, nil
+}
+
+func (s *GitHubStore) GetModuleVersionSource(ctx context.Context, namespace, name, system, version string) (*core.ModuleVersion, fs.File, error) {
+	return nil, nil, fmt.Errorf("not implemented")
 }

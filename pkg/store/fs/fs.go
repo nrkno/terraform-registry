@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 
 	"github.com/nrkno/terraform-registry/pkg/core"
 )
@@ -38,7 +39,7 @@ func (s *FSStore) Get(key string) []*core.ModuleVersion {
 	var mv []*core.ModuleVersion
 	for _, e := range entries {
 		if e.IsDir() {
-			mv = append(mv, &core.ModuleVersion{Version: e.Name(), SourceURL: ""})
+			mv = append(mv, &core.ModuleVersion{Version: e.Name(), SourceURL: key})
 		}
 	}
 
@@ -75,4 +76,19 @@ func (s *FSStore) GetModuleVersion(ctx context.Context, namespace, name, provide
 	}
 
 	return nil, fmt.Errorf("version '%s' not found for module '%s'", version, key)
+}
+
+// GetModuleVersion returns single module version.
+func (s *FSStore) GetModuleVersionSource(ctx context.Context, namespace, name, provider, version string) (*core.ModuleVersion, fs.File, error) {
+	key := fmt.Sprintf("%s/%s/%s", namespace, name, provider)
+	v, err := s.GetModuleVersion(ctx, namespace, name, provider, version)
+	if err != nil {
+		return v, nil, err
+	}
+
+	f, err := s.fs.Open(path.Join(key, v.Version+".zip"))
+	if err != nil {
+		return v, nil, err
+	}
+	return v, f, err
 }

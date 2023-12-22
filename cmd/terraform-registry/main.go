@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/nrkno/terraform-registry/pkg/registry"
+	"github.com/nrkno/terraform-registry/pkg/store/fs"
 	"github.com/nrkno/terraform-registry/pkg/store/github"
 	"github.com/nrkno/terraform-registry/pkg/store/s3"
 	"go.uber.org/zap"
@@ -46,6 +47,8 @@ var (
 	gitHubToken       string
 	gitHubOwnerFilter string
 	gitHubTopicFilter string
+
+	fsRootPath string
 
 	// > Environment variable names used by the utilities in the Shell and Utilities
 	// > volume of IEEE Std 1003.1-2001 consist solely of uppercase letters, digits,
@@ -77,6 +80,8 @@ func init() {
 
 	flag.StringVar(&S3Region, "s3-region", "", "S3 region such as us-east-1")
 	flag.StringVar(&S3Bucket, "s3-bucket", "", "S3 bucket name")
+
+	flag.StringVar(&fsRootPath, "fs-root-path", "", "FS store's local root path")
 }
 
 func main() {
@@ -158,6 +163,8 @@ func main() {
 		gitHubRegistry(reg)
 	case "s3":
 		s3Registry(reg)
+	case "fs":
+		fsRegistry(reg, fsRootPath)
 	default:
 		logger.Fatal("invalid store type", zap.String("selected", storeType))
 	}
@@ -301,6 +308,15 @@ func s3Registry(reg *registry.Registry) {
 			zap.Errors("err", []error{err}),
 		)
 	}
+	reg.SetModuleStore(store)
+}
+
+func fsRegistry(reg *registry.Registry, root string) {
+	if root == "" {
+		logger.Fatal("Missing flag '-fs-root-path'")
+	}
+
+	store := fs.NewFSStore(root)
 	reg.SetModuleStore(store)
 }
 

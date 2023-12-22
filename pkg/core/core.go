@@ -5,7 +5,10 @@
 
 package core
 
-import "context"
+import (
+	"context"
+	"io/fs"
+)
 
 type ModuleVersion struct {
 	// Version is a SemVer version string that specifies the version for a module.
@@ -19,4 +22,6 @@ type ModuleVersion struct {
 type ModuleStore interface {
 	ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*ModuleVersion, error)
 	GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*ModuleVersion, error)
+	// Stores that do not implement this should return `nil, nil, fmt.Errorf("not implemented")`
+	GetModuleVersionSource(ctx context.Context, namespace, name, provider, version string) (*ModuleVersion, fs.File, error)
 }

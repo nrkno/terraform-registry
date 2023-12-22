@@ -7,6 +7,9 @@ package registry
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"mime"
 	"net/http"
 	"slices"
 	"strings"
@@ -22,6 +25,10 @@ import (
 var (
 	// WelcomeMessage is the message returned from the index route.
 	WelcomeMessage = []byte("Terraform Registry\nhttps://github.com/nrkno/terraform-registry\n")
+)
+
+const (
+	moduleDownloadURLRootPath = "/src/modules"
 )
 
 // Registry implements the Terraform HTTP registry protocol.
@@ -96,11 +103,16 @@ func (reg *Registry) setupRoutes() {
 	reg.router.Get("/health", reg.Health())
 	reg.router.Get("/.well-known/{name}", reg.ServiceDiscovery())
 
-	// Only API routes are protected with authentication
 	reg.router.Route("/v1", func(r chi.Router) {
 		r.Use(reg.TokenAuth)
 		r.Get("/modules/{namespace}/{name}/{provider}/versions", reg.ModuleVersions())
 		r.Get("/modules/{namespace}/{name}/{provider}/{version}/download", reg.ModuleDownload())
+	})
+
+	// Source download handlers
+	reg.router.Route(moduleDownloadURLRootPath, func(r chi.Router) {
+		r.Use(reg.TokenAuth)
+		r.Get("/{namespace}/{name}/{provider}/{version}", reg.ModuleDownloadSource())
 	})
 }
 
@@ -344,5 +356,57 @@ func (reg *Registry) ModuleDownload() http.HandlerFunc {
 
 		w.Header().Set("X-Terraform-Get", ver.SourceURL)
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// ModuleDownload returns a handler that serves the source file for a specific version of a module.
+func (reg *Registry) ModuleDownloadSource() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var (
+			namespace = chi.URLParam(r, "namespace")
+			name      = chi.URLParam(r, "name")
+			provider  = chi.URLParam(r, "provider")
+			version   = chi.URLParam(r, "version")
+		)
+
+		_, f, err := reg.moduleStore.GetModuleVersionSource(r.Context(), namespace, name, provider, version)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			reg.logger.Error("ModuleDownloadSource", zap.Errors("err", []error{err}))
+			return
+		}
+
+		if f == nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			reg.logger.Warn("ModuleDownloadSource: the configured store does not support downloading files directly, or there is a bug in the store", zap.String("requestPath", r.URL.Path))
+			return
+		}
+
+		fstat, err := f.Stat()
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			reg.logger.Error("ModuleDownloadSource", zap.Errors("err", []error{err}))
+			return
+		}
+
+		filename := fstat.Name()
+		parts := strings.Split(filename, ".")
+		if len(parts) == 0 {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			reg.logger.Error("ModuleDownloadSource: source filename does not have a file extension", zap.String("filename", filename))
+			return
+		}
+
+		ctype := mime.TypeByExtension("." + parts[len(parts)-1])
+		if ctype == "" {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			reg.logger.Error("ModuleDownloadSource: source filename does not have a file extension", zap.String("filename", filename))
+			return
+		}
+
+		w.Header().Set("Content-Type", ctype)
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", fstat.Size()))
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fstat.Name()))
+		io.Copy(w, f)
 	}
 }
