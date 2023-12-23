@@ -151,6 +151,10 @@ func main() {
 
 	// Configure authentication
 	if !reg.IsAuthDisabled {
+		if authTokensFile == "" {
+			logger.Fatal("-auth-tokens-file is not set. Provide a valid path or set -auth-disabled.")
+		}
+
 		// Watch for changes of the auth file
 		go watchFile(context.TODO(), authTokensFile, 10*time.Second, func(b []byte) {
 			tokens, err := parseAuthTokens(b)
