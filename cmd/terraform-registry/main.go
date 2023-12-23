@@ -163,11 +163,14 @@ func main() {
 					zap.Errors("err", []error{err}),
 				)
 			}
-			if len(tokens) == 0 {
-				logger.Warn("no tokens loaded from auth token file")
-			}
+
 			reg.SetAuthTokens(tokens)
-			logger.Info("successfully loaded auth tokens", zap.Int("count", len(tokens)))
+
+			if len(tokens) == 0 {
+				logger.Warn("reloaded auth token file", zap.Int("count", len(tokens)))
+			} else {
+				logger.Info("reloaded auth token file", zap.Int("count", len(tokens)))
+			}
 		})
 		logger.Info("authentication enabled")
 	} else {
