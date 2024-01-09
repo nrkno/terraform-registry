@@ -37,7 +37,7 @@ type Registry struct {
 	router      *chi.Mux
 	authTokens  map[string]string
 	moduleStore core.ModuleStore
-	mut         sync.RWMutex
+	tokenMut    sync.RWMutex
 
 	logger *zap.Logger
 }
@@ -62,8 +62,8 @@ func (reg *Registry) SetModuleStore(s core.ModuleStore) {
 
 // GetAuthTokens gets the valid auth tokens configured for this instance.
 func (reg *Registry) GetAuthTokens() map[string]string {
-	reg.mut.RLock()
-	defer reg.mut.RUnlock()
+	reg.tokenMut.RLock()
+	defer reg.tokenMut.RUnlock()
 
 	// Make sure map can't be modified indirectly
 	m := make(map[string]string, len(reg.authTokens))
@@ -81,9 +81,9 @@ func (reg *Registry) SetAuthTokens(authTokens map[string]string) {
 		m[k] = v
 	}
 
-	reg.mut.Lock()
+	reg.tokenMut.Lock()
 	reg.authTokens = m
-	reg.mut.Unlock()
+	reg.tokenMut.Unlock()
 }
 
 // setupRoutes initialises and configures the HTTP router. Must be called before starting the server (`ServeHTTP`).
