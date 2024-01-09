@@ -190,7 +190,7 @@ func (reg *Registry) TokenAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		for _, t := range reg.authTokens {
+		for _, t := range reg.GetAuthTokens() {
 			if t == token {
 				next.ServeHTTP(w, r)
 				return
