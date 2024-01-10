@@ -12,7 +12,7 @@ all : reuse build test
 
 .PHONY: build
 build :
-	go build $(GO_FLAGS) -buildvcs=false -o ${BINARY_NAME} ${CMD_SOURCE}
+	go build $(GO_FLAGS) -buildvcs=false -o $(BINARY_NAME) $(CMD_SOURCE)
 
 .PHONY: build-docker
 build-docker :
@@ -24,7 +24,7 @@ test :
 
 .PHONY: run
 run :
-	go run ${CMD_SOURCE}
+	go run $(CMD_SOURCE)
 
 .PHONY: reuse
 reuse :
@@ -40,4 +40,4 @@ reuse :
 .PHONY: clean
 clean :
 	go clean
-	rm ${BINARY_NAME}
+	rm $(BINARY_NAME)
