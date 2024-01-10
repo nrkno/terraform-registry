@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -39,6 +41,7 @@ var (
 	storeType             string
 	logLevelStr           string
 	logFormatStr          string
+	printVersionInfo      bool
 
 	S3Region string
 	S3Bucket string
@@ -55,7 +58,16 @@ var (
 	// https://pubs.opengroup.org/onlinepubs/000095399/basedefs/xbd_chap08.html
 	patternEnvVarName = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*`)
 
+	// These variables are set at build time using ldflags.
+	version   = "(devel)"
+	buildDate = "unknown"
+
 	logger *zap.Logger = zap.NewNop()
+)
+
+const (
+	developmentVersion = "(devel)"
+	programName        = "terraform-registry"
 )
 
 func init() {
@@ -71,6 +83,7 @@ func init() {
 	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github, s3)")
 	flag.StringVar(&logLevelStr, "log-level", "info", "Levels: debug, info, warn, error")
 	flag.StringVar(&logFormatStr, "log-format", "console", "Formats: json, console")
+	flag.BoolVar(&printVersionInfo, "version", false, "Print version info and exit")
 
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
@@ -85,6 +98,11 @@ func main() {
 	if len(os.Args[1:]) == 0 {
 		flag.PrintDefaults()
 		os.Exit(1)
+	}
+
+	if printVersionInfo {
+		fmt.Printf("%s %s\n", programName, versionString())
+		os.Exit(0)
 	}
 
 	// Configure logging
@@ -344,4 +362,36 @@ func setEnvironmentFromJSONFile(prefix, filename string) error {
 		)
 	}
 	return nil
+}
+
+// versionString returns a string with version information for this program,
+// like `v5.0.4-0.20230601165947-6ce0bf390ce3 linux amd64` for release builds,
+// or `(devel).unknown-478ce46fb3ab76445001e614fec7ff1dd0c6cfe0 linux amd64` for local builds.
+func versionString() string {
+	v := struct {
+		Version   string
+		BuildDate string
+		GitCommit string
+		GoArch    string
+		GoOS      string
+		GoVersion string
+	}{
+		Version:   version,
+		BuildDate: buildDate,
+		GitCommit: "unknown",
+		GoArch:    runtime.GOARCH,
+		GoOS:      runtime.GOOS,
+		GoVersion: runtime.Version(),
+	}
+
+	info, ok := debug.ReadBuildInfo()
+	if ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				v.GitCommit = setting.Value
+			}
+		}
+	}
+
+	return fmt.Sprintf("%s.%s-%s %s %s", v.Version, v.BuildDate, v.GitCommit, v.GoOS, v.GoArch)
 }

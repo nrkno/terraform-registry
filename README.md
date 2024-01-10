@@ -88,6 +88,7 @@ Command line arguments:
 - `-tls-key-file`: Path to TLS certificate private key file
 - `-log-level`: Log level selection: `debug`, `info`, `warn`, `error` (default: `info`)
 - `-log-format`: Log output format selection: `json`, `console` (default: `console`)
+- `-version`: Print version info and exit
 
 Additionally, depending on the selected store type, some options are described
 in the next subsections.
