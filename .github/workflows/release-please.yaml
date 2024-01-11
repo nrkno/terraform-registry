@@ -9,6 +9,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: google-github-actions/release-please-action@v4.0.2
+        id: release-please
         with:
           release-type: go
           package-name: terraform-registry
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      tag_name: ${{ steps.release-please.outputs.tag_name }}
+
+  build-binaries:
+    name: Build and push binaries
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created
+    strategy:
+      matrix:
+        arch:
+          - amd64
+          - arm64
+        os:
+          - linux
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+      -
+        name: Setup Go
+        uses: actions/setup-go@v5.0.0
+        with:
+          go-version-file: 'go.mod'
+      -
+        name: Build and upload
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          VERSION: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          LD_FLAGS=""
+          LD_FLAGS+=" -s" # no debug symbols
+          LD_FLAGS+=" -w" # no DWARF debug info
+          LD_FLAGS+=" -X 'main.buildDate=$(date --utc +%Y-%m-%dT%H:%M:%SZ)'"
+          LD_FLAGS+=" -X 'main.version=${VERSION}'"
+
+          make LD_FLAGS="${LD_FLAGS}" build
+          tar -cvzf terraform-registry.tar.gz terraform-registry
+          gh release upload ${VERSION} terraform-registry.tar.gz%#%terraform-registry_${VERSION}_${GOOS}_${GOARCH}.tar.gz
+          rm terraform-registry terraform-registry.tar.gz
