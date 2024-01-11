@@ -6,6 +6,18 @@ SPDX-License-Identifier: GPL-3.0-only
 
 # Changelog
 
+## [0.18.0](https://github.com/nrkno/terraform-registry/compare/v0.17.0...v0.18.0) (2024-01-11)
+
+
+### Features
+
+* add -version arg ([3d16771](https://github.com/nrkno/terraform-registry/commit/3d1677151209ddb565dbe71bb3626e950065290a))
+
+
+### Bug Fixes
+
+* avoid race when verifying auth tokens ([6fe703a](https://github.com/nrkno/terraform-registry/commit/6fe703afcf62da0e4751d8f9fc1062084da6a3af))
+
 ## [0.17.0](https://github.com/nrkno/terraform-registry/compare/v0.16.0...v0.17.0) (2023-12-20)
 
 
