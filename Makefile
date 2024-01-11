@@ -12,7 +12,7 @@ all : reuse build test
 
 .PHONY: build
 build :
-	go build $(GO_FLAGS) -buildvcs=false -o $(BINARY_NAME) $(CMD_SOURCE)
+	go build -ldflags "$(LD_FLAGS)" $(GO_FLAGS) -o $(BINARY_NAME) $(CMD_SOURCE)
 
 .PHONY: build-docker
 build-docker :
