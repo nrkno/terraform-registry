@@ -11,6 +11,8 @@ jobs:
       - uses: google-github-actions/release-please-action@v4.0.2
         id: release-please
         with:
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
           release-type: go
           package-name: terraform-registry
     outputs:
