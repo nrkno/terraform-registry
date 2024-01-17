@@ -6,6 +6,7 @@
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "draft": true,
+      "draft-pull-request": true,
       "prerelease": false
     }
   },
