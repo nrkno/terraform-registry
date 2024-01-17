@@ -6,6 +6,19 @@ SPDX-License-Identifier: GPL-3.0-only
 
 # Changelog
 
+## [1.0.0](https://github.com/nrkno/terraform-registry/compare/v0.18.0...v1.0.0) (2024-01-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove redundant log on empty auth token file
+* require -auth-disabled when -auth-tokens-file is unset
+
+### Bug Fixes
+
+* remove redundant log on empty auth token file ([03bc360](https://github.com/nrkno/terraform-registry/commit/03bc3605f7dc3c8e7c8504ded0a234a93a1a5fdc))
+* require -auth-disabled when -auth-tokens-file is unset ([b632295](https://github.com/nrkno/terraform-registry/commit/b6322953ec46d6018cfb17ff31f0feae35cad3f7))
+
 ## [0.18.0](https://github.com/nrkno/terraform-registry/compare/v0.17.0...v0.18.0) (2024-01-11)
 
 
