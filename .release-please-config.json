@@ -1,12 +1,8 @@
 {
   "versioning": "always-bump-minor",
-  "packages": {
-    ".": {
-      "changelog-path": "CHANGELOG.md",
-      "release-type": "go",
-      "draft": false,
-      "prerelease": false
-    }
-  },
+  "changelog-path": "CHANGELOG.md",
+  "release-type": "go",
+  "draft": true,
+  "prerelease": false,
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
 }
