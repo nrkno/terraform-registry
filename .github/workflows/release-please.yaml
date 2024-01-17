@@ -14,7 +14,6 @@ jobs:
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json
           release-type: go
-          package-name: terraform-registry
     outputs:
       release_created: ${{ steps.release-please.outputs.release_created }}
       tag_name: ${{ steps.release-please.outputs.tag_name }}
