@@ -1,6 +1,5 @@
 {
-  "bump-minor-pre-major": true,
-  "bump-patch-for-minor-pre-major": true,
+  "versioning": "always-bump-minor",
   "packages": {
     ".": {
       "changelog-path": "CHANGELOG.md",
