@@ -10,7 +10,7 @@ go 1.21
 toolchain go1.21.4
 
 require (
-	github.com/aws/aws-sdk-go v1.49.16
+	github.com/aws/aws-sdk-go v1.50.1
 	github.com/go-chi/chi/v5 v5.0.11
 	github.com/google/go-github/v43 v43.0.0
 	github.com/hashicorp/go-version v1.6.0
