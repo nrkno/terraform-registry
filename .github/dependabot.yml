@@ -4,7 +4,7 @@ updates:
   directory: "/"
   schedule:
     interval: daily
-    time: "08:00"
+    time: "13:00"
     timezone: "Europe/Oslo"
   open-pull-requests-limit: 5
   reviewers:
@@ -13,7 +13,7 @@ updates:
   directory: "/"
   schedule:
     interval: "daily"
-    time: "08:00"
+    time: "13:00"
     timezone: "Europe/Oslo"
   commit-message:
     prefix: ci(workflow)
