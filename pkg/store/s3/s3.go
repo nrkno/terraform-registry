@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/nrkno/terraform-registry/pkg/core"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -143,4 +144,8 @@ func isValidModuleSourcePath(path string) bool {
 	addrRegExp := `\w+/\w+/\w+`
 	r := regexp.MustCompile("^" + addrRegExp + "/" + verRegExp)
 	return r.MatchString(path)
+}
+
+func (s *S3Store) Metrics() prometheus.Collector {
+	return nil
 }

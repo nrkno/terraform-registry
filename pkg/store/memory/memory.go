@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/nrkno/terraform-registry/pkg/core"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // MemoryStore is an in-memory store implementation without a backend.
@@ -71,4 +72,8 @@ func (s *MemoryStore) GetModuleVersion(ctx context.Context, namespace, name, pro
 	}
 
 	return nil, fmt.Errorf("version '%s' not found for module '%s'", version, key)
+}
+
+func (s *MemoryStore) Metrics() prometheus.Collector {
+	return nil
 }

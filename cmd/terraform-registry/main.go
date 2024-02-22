@@ -25,23 +25,27 @@ import (
 	"github.com/nrkno/terraform-registry/pkg/registry"
 	"github.com/nrkno/terraform-registry/pkg/store/github"
 	"github.com/nrkno/terraform-registry/pkg/store/s3"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
 var (
-	listenAddr            string
-	accessLogDisabled     bool
-	accessLogIgnoredPaths string
-	authDisabled          bool
-	authTokensFile        string
-	envJSONFiles          string
-	tlsEnabled            bool
-	tlsCertFile           string
-	tlsKeyFile            string
-	storeType             string
-	logLevelStr           string
-	logFormatStr          string
-	printVersionInfo      bool
+	listenAddr               string
+	accessLogDisabled        bool
+	accessLogIgnoredPaths    string
+	authDisabled             bool
+	authTokensFile           string
+	envJSONFiles             string
+	tlsEnabled               bool
+	tlsCertFile              string
+	tlsKeyFile               string
+	storeType                string
+	prometheusListenAddr     string
+	prometheusMetricsEnabled bool
+	logLevelStr              string
+	logFormatStr             string
+	printVersionInfo         bool
 
 	S3Region string
 	S3Bucket string
@@ -84,6 +88,8 @@ func init() {
 	flag.StringVar(&logLevelStr, "log-level", "info", "Levels: debug, info, warn, error")
 	flag.StringVar(&logFormatStr, "log-format", "console", "Formats: json, console")
 	flag.BoolVar(&printVersionInfo, "version", false, "Print version info and exit")
+	flag.StringVar(&prometheusListenAddr, "prometheus-listen-addr", ":9090", "Listen address where /metrics endpoint is exposed.")
+	flag.BoolVar(&prometheusMetricsEnabled, "prometheus-metrics-enabled", false, "Enable the Prometheus metrics endpoint.")
 
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
@@ -187,6 +193,16 @@ func main() {
 		logger.Fatal("invalid store type", zap.String("selected", storeType))
 	}
 
+	if prometheusMetricsEnabled {
+		prometheus.
+			WrapRegistererWithPrefix("terraform_registry_", prometheus.DefaultRegisterer).
+			MustRegister(reg.Metrics())
+
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		go prometheusListenAndServe(mux)
+	}
+
 	listenAndServe(reg)
 }
 
@@ -212,6 +228,33 @@ func listenAndServe(handler http.Handler) {
 	} else {
 		err := srv.ListenAndServe()
 		logger.Panic("ListenAndServe",
+			zap.Errors("err", []error{err}),
+		)
+	}
+}
+
+func prometheusListenAndServe(handler http.Handler) {
+	srv := http.Server{
+		Addr:              prometheusListenAddr,
+		Handler:           handler,
+		ReadTimeout:       3 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
+		WriteTimeout:      3 * time.Second,
+		IdleTimeout:       60 * time.Second, // keep-alive timeout
+	}
+
+	logger.Info("starting Prometheus metrics HTTP server",
+		zap.Bool("tls", tlsEnabled),
+		zap.String("listenAddr", prometheusListenAddr),
+	)
+	if tlsEnabled {
+		err := srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
+		logger.Panic("prometheusListenAndServe",
+			zap.Errors("err", []error{err}),
+		)
+	} else {
+		err := srv.ListenAndServe()
+		logger.Panic("prometheusListenAndServe",
 			zap.Errors("err", []error{err}),
 		)
 	}

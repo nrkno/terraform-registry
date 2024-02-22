@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-github/v43/github"
 	goversion "github.com/hashicorp/go-version"
 	"github.com/nrkno/terraform-registry/pkg/core"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -199,4 +200,9 @@ func (s *GitHubStore) searchRepositories(ctx context.Context) ([]*github.Reposit
 	}
 
 	return allRepos, nil
+}
+
+// Metrics returns a registry with metrics for this store.
+func (s *GitHubStore) Metrics() prometheus.Collector {
+	return nil
 }
