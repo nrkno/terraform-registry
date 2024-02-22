@@ -187,9 +187,13 @@ func main() {
 		logger.Fatal("invalid store type", zap.String("selected", storeType))
 	}
 
+	listenAndServe(reg)
+}
+
+func listenAndServe(handler http.Handler) {
 	srv := http.Server{
 		Addr:              listenAddr,
-		Handler:           reg,
+		Handler:           handler,
 		ReadTimeout:       3 * time.Second,
 		ReadHeaderTimeout: 3 * time.Second,
 		WriteTimeout:      3 * time.Second,
@@ -201,12 +205,14 @@ func main() {
 		zap.String("listenAddr", listenAddr),
 	)
 	if tlsEnabled {
+		err := srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		logger.Panic("ListenAndServe",
-			zap.Errors("err", []error{srv.ListenAndServeTLS(tlsCertFile, tlsKeyFile)}),
+			zap.Errors("err", []error{err}),
 		)
 	} else {
+		err := srv.ListenAndServe()
 		logger.Panic("ListenAndServe",
-			zap.Errors("err", []error{srv.ListenAndServe()}),
+			zap.Errors("err", []error{err}),
 		)
 	}
 }
