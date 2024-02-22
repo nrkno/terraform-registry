@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/google/go-github/v43/github"
+	"github.com/google/go-github/v59/github"
 	"github.com/matryer/is"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/nrkno/terraform-registry/pkg/core"
