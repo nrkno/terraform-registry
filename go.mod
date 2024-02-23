@@ -15,7 +15,7 @@ require (
 	github.com/google/go-github/v43 v43.0.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/matryer/is v1.4.1
-	github.com/migueleliasweb/go-github-mock v0.0.22
+	github.com/migueleliasweb/go-github-mock v0.0.23
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.26.0
 	golang.org/x/oauth2 v0.17.0
@@ -24,7 +24,7 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/go-github/v56 v56.0.0 // indirect
+	github.com/google/go-github/v59 v59.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
