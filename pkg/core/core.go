@@ -5,7 +5,11 @@
 
 package core
 
-import "context"
+import (
+	"context"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type ModuleVersion struct {
 	// Version is a SemVer version string that specifies the version for a module.
@@ -19,4 +23,5 @@ type ModuleVersion struct {
 type ModuleStore interface {
 	ListModuleVersions(ctx context.Context, namespace, name, provider string) ([]*ModuleVersion, error)
 	GetModuleVersion(ctx context.Context, namespace, name, provider, version string) (*ModuleVersion, error)
+	Metrics() prometheus.Collector
 }

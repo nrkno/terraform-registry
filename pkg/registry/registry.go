@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nrkno/terraform-registry/pkg/core"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -151,6 +152,17 @@ func (reg *Registry) RequestLogger() func(next http.Handler) http.Handler {
 }
 
 // SPDX-SnippetEnd
+
+// Metrics returns a Prometheus registry containing metrics for the module store.
+func (reg *Registry) Metrics() prometheus.Collector {
+	root := prometheus.NewRegistry()
+
+	if reg.moduleStore != nil {
+		prometheus.WrapRegistererWithPrefix("store_module_", root).MustRegister(reg.moduleStore.Metrics())
+	}
+
+	return root
+}
 
 func (reg *Registry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reg.router.ServeHTTP(w, r)

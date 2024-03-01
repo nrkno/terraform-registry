@@ -86,6 +86,8 @@ Command line arguments:
 - `-tls-enabled`: Whether to enable TLS termination (default: `false`)
 - `-tls-cert-file`: Path to TLS certificate file
 - `-tls-key-file`: Path to TLS certificate private key file
+- `-prometheus-listen-addr`: Listen address where /metrics endpoint is exposed (default: `:9090`)
+- `-prometheus-metrics-enabled`: Enable the Prometheus metrics endpoint (default: `false`)
 - `-log-level`: Log level selection: `debug`, `info`, `warn`, `error` (default: `info`)
 - `-log-format`: Log output format selection: `json`, `console` (default: `console`)
 - `-version`: Print version info and exit
