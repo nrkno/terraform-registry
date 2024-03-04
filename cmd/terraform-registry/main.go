@@ -39,16 +39,21 @@ var (
 	tlsCertFile           string
 	tlsKeyFile            string
 	storeType             string
+	providerStoreType     string
 	logLevelStr           string
 	logFormatStr          string
 	printVersionInfo      bool
 
+	assetDownloadAuthSecret string
+
 	S3Region string
 	S3Bucket string
 
-	gitHubToken       string
-	gitHubOwnerFilter string
-	gitHubTopicFilter string
+	gitHubToken                string
+	gitHubOwnerFilter          string
+	gitHubTopicFilter          string
+	gitHubProvidersOwnerFilter string
+	gitHubProvidersTopicFilter string
 
 	// > Environment variable names used by the utilities in the Shell and Utilities
 	// > volume of IEEE Std 1003.1-2001 consist solely of uppercase letters, digits,
@@ -81,12 +86,15 @@ func init() {
 	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "")
 	flag.StringVar(&tlsKeyFile, "tls-key-file", "", "")
 	flag.StringVar(&storeType, "store", "", "Store backend to use (choices: github, s3)")
+	flag.StringVar(&providerStoreType, "provider-store", "", "Which backend to use for the provider store(choices: github)")
 	flag.StringVar(&logLevelStr, "log-level", "info", "Levels: debug, info, warn, error")
 	flag.StringVar(&logFormatStr, "log-format", "console", "Formats: json, console")
 	flag.BoolVar(&printVersionInfo, "version", false, "Print version info and exit")
 
 	flag.StringVar(&gitHubOwnerFilter, "github-owner-filter", "", "GitHub org/user repository filter")
 	flag.StringVar(&gitHubTopicFilter, "github-topic-filter", "", "GitHub topic repository filter")
+	flag.StringVar(&gitHubProvidersOwnerFilter, "github-providers-owner-filter", "", "GitHub providers topic repository filter")
+	flag.StringVar(&gitHubProvidersTopicFilter, "github-providers-topic-filter", "", "GitHub providers topic repository filter")
 
 	flag.StringVar(&S3Region, "s3-region", "", "S3 region such as us-east-1")
 	flag.StringVar(&S3Bucket, "s3-bucket", "", "S3 bucket name")
@@ -141,11 +149,18 @@ func main() {
 
 	// Load environment variables here!
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
+	assetDownloadAuthSecret = os.Getenv("ASSET_DOWNLOAD_AUTH_SECRET")
 
 	reg := registry.NewRegistry(logger)
 	reg.AccessLogIgnoredPaths = strings.Split(accessLogIgnoredPaths, ",")
 	reg.IsAccessLogDisabled = accessLogDisabled
 	reg.IsAuthDisabled = authDisabled
+	reg.AssetDownloadAuthSecret = []byte(assetDownloadAuthSecret)
+
+	if providerStoreType == "github" {
+		reg.IsProviderEnabled = true
+		logger.Info("enabling github provider store")
+	}
 
 	logger.Info("HTTP access log configuration", zap.Bool("disabled", reg.IsAccessLogDisabled), zap.Strings("ignoredPaths", reg.AccessLogIgnoredPaths))
 
@@ -211,7 +226,7 @@ func main() {
 	}
 }
 
-// watchFile reads the contents of the file at `filename`, first immediately, then at at every `interval`.
+// watchFile reads the contents of the file at `filename`, first immediately, then at every `interval`.
 // If and only if the file contents have changed since the last invocation of `callback` it is called again.
 // Note that the callback will always be called initially when this function is called.
 func watchFile(ctx context.Context, filename string, interval time.Duration, callback func(b []byte)) {
@@ -270,29 +285,54 @@ func gitHubRegistry(reg *registry.Registry) {
 		logger.Fatal("at least one of -github-owner-filter and -github-topic-filter must be set")
 	}
 
-	store := github.NewGitHubStore(gitHubOwnerFilter, gitHubTopicFilter, gitHubToken, logger.Named("github store"))
-	reg.SetModuleStore(store)
+	if reg.IsProviderEnabled && gitHubProvidersOwnerFilter == "" && gitHubProvidersTopicFilter == "" {
+		logger.Fatal("at least one of -github-providers-owner-filter and -github-providers-topic-filter must be set when provider store is enabled")
+	}
 
-	// Fill store cache initially
-	logger.Debug("loading GitHub store cache")
+	store := github.NewGitHubStore(gitHubOwnerFilter, gitHubTopicFilter, gitHubProvidersOwnerFilter, gitHubProvidersTopicFilter, gitHubToken, logger.Named("github store"))
+	reg.SetModuleStore(store)
+	reg.SetProviderStore(store)
+
+	// Fill provider store cache initially
+	if reg.IsProviderEnabled {
+		logger.Debug("loading GitHub provider store cache")
+		err := store.ReloadProviderCache(context.Background())
+		if err != nil {
+			logger.Error("failed to load GitHub provider store cache",
+				zap.Errors("err", []error{err}),
+			)
+		}
+	}
+
+	// Fill module store cache initially
+	logger.Debug("loading GitHub module store cache")
 	if err := store.ReloadCache(context.Background()); err != nil {
-		logger.Error("failed to load GitHub store cache",
+		logger.Error("failed to load GitHub module store cache",
 			zap.Errors("err", []error{err}),
 		)
 	}
 
-	// Reload store cache on regular intervals
+	// Reload store caches on regular intervals
 	go func() {
 		t := time.NewTicker(5 * time.Minute)
 		defer t.Stop()
 		<-t.C // ignore the first tick
 
 		for {
-			logger.Debug("reloading GitHub store cache")
+			logger.Debug("reloading GitHub module store cache")
 			if err := store.ReloadCache(context.Background()); err != nil {
-				logger.Error("failed to reload GitHub store cache",
+				logger.Error("failed to reload GitHub module store cache",
 					zap.Errors("err", []error{err}),
 				)
+			}
+			if reg.IsProviderEnabled {
+				logger.Debug("loading GitHub provider store cache")
+				err := store.ReloadProviderCache(context.Background())
+				if err != nil {
+					logger.Error("failed to load GitHub provider store cache",
+						zap.Errors("err", []error{err}),
+					)
+				}
 			}
 			<-t.C
 		}

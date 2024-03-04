@@ -26,17 +26,18 @@ later. Prior versions do not support this protocol.
 Supported Terraform protocols:
 - [ ] login.v1
 - [x] modules.v1
-- [ ] providers.v1
+- [x] providers.v1 - only implemented in the GithubStore
 
 Supported backends:
 - `MemoryStore`: a dumb in-memory store currently only used for testing
-- [`GitHubStore`](#github-store): queries the GitHub API for modules, version tags and SSH download URLs
+- [`GitHubStore`](#github-store): queries the GitHub API for modules, providers, version tags and SSH download URLs
 - [`S3Store`](#S3-store): queries a S3 bucket for modules, version tags and HTTPS download URLs
 
 Authentication:
 - Reads a set of tokens from a file and authenticates requests based on the
   request's `Authorization: Bearer <token>`
-- Only `/v1/*` routes are protected
+- `/v1/*` routes are protected
+- `/download/*` routes are protected
 
 ## Running
 ### Native
@@ -93,10 +94,14 @@ Command line arguments:
 Additionally, depending on the selected store type, some options are described
 in the next subsections.
 
-### GitHub Store
+### Environment variables:
+- `ASSET_DOWNLOAD_AUTH_SECRET`: secret used to sign JWTs protecting the `/download/provider/` routes.
 
-This store uses GitHub as a backend. A query for the module address
-`namespace/name/provider` will return the GitHub repository `namespace/name`.
+### GitHub Store
+This store uses GitHub as a backend.
+
+#### Modules
+A query for the module address `namespace/name/provider` will return the GitHub repository `namespace/name`.
 The `provider` part of the module URL must always be set to `generic` since
 this store implementation has no notion of the type of providers the modules
 are designed for.
@@ -108,12 +113,35 @@ I.e., a repository tag `v1.2.3` will be made available as version `1.2.3`.
 No verification is performed to check if the repo actually contains Terraform
 modules. This is left for Terraform to determine.
 
-Environment variables:
+#### Providers
+A query for the provider address `namespace/name` will return the GitHub repository `namespace/name`.
+
+Some verifications are performed to ensure that the repo contains what seems to be a Terraform 
+provider. The releases on the repository must follow the same [steps](https://developer.hashicorp.com/terraform/registry/providers/publishing)
+that HashiCorp requires when publishing a provider to their public registry.
+
+In addition, you must provide the public part of the GPG signing key as part the Github release.
+This is done by adding the GPG key in PEM format to your repository, and then 
+extending the `extra_files` object of the `.goreleaser.yaml` from Hashicorp. 
+
+Example:
+```yaml
+release:
+  extra_files:
+    - glob: 'terraform-registry-manifest.json'
+      name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
+    - glob: 'gpg-public-key.pem'
+      name_template: '{{ .ProjectName }}_{{ .Version }}_gpg-public-key.pem'
+```
+
+#### Environment variables:
 - `GITHUB_TOKEN`: auth token for the GitHub API
 
-Command line arguments:
-- `-github-owner-filter`: GitHub org/user repository filter
-- `-github-topic-filter`: GitHub topic repository filter
+#### Command line arguments:
+- `-github-owner-filter`: Module discovery GitHub org/user repository filter
+- `-github-topic-filter`: Module discovery GitHub topic repository filter
+- `-github-providers-owner-filter`: Provider discovery GitHub org/user repository filter
+- `-github-providers-topic-filter`: Provider discovery GitHub topic repository filter
 
 ### S3 Store
 
@@ -134,7 +162,7 @@ I.e., a repository tag `v1.2.3` will be made available as version `1.2.3`.
 No verification is performed to check if the repo actually contains Terraform
 modules. This is left for Terraform to determine.
 
-Command line arguments:
+#### Command line arguments:
 - `-store s3`: Switch store to S3
 - `-s3-region`: Region such as us-east-1
 - `-s3-bucket`: S3 bucket name

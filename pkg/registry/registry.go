@@ -7,6 +7,10 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/golang-jwt/jwt/v5"
+	"io"
 	"net/http"
 	"slices"
 	"strings"
@@ -34,10 +38,17 @@ type Registry struct {
 	// Paths to ignore request logging for
 	AccessLogIgnoredPaths []string
 
-	router      *chi.Mux
-	authTokens  map[string]string
-	moduleStore core.ModuleStore
-	tokenMut    sync.RWMutex
+	// Whether to enable provider registry support
+	IsProviderEnabled bool
+
+	// Secret used to issue JTW for protecting the /download/provider/ route
+	AssetDownloadAuthSecret []byte
+
+	router        *chi.Mux
+	authTokens    map[string]string
+	moduleStore   core.ModuleStore
+	providerStore core.ProviderStore
+	tokenMut      sync.RWMutex
 
 	logger *zap.Logger
 }
@@ -48,8 +59,9 @@ func NewRegistry(logger *zap.Logger) *Registry {
 	}
 
 	reg := &Registry{
-		IsAuthDisabled: false,
-		logger:         logger,
+		IsAuthDisabled:    false,
+		IsProviderEnabled: false,
+		logger:            logger,
 	}
 	reg.setupRoutes()
 	return reg
@@ -58,6 +70,11 @@ func NewRegistry(logger *zap.Logger) *Registry {
 // SetModuleStore sets the active module store for this instance.
 func (reg *Registry) SetModuleStore(s core.ModuleStore) {
 	reg.moduleStore = s
+}
+
+// SetProviderStore sets the active provider store for this instance.
+func (reg *Registry) SetProviderStore(s core.ProviderStore) {
+	reg.providerStore = s
 }
 
 // GetAuthTokens gets the valid auth tokens configured for this instance.
@@ -101,6 +118,13 @@ func (reg *Registry) setupRoutes() {
 		r.Use(reg.TokenAuth)
 		r.Get("/modules/{namespace}/{name}/{provider}/versions", reg.ModuleVersions())
 		r.Get("/modules/{namespace}/{name}/{provider}/{version}/download", reg.ModuleDownload())
+		r.Get("/providers/{namespace}/{name}/versions", reg.ProviderVersions())
+		r.Get("/providers/{namespace}/{name}/{version}/download/{os}/{arch}", reg.ProviderDownload())
+	})
+
+	reg.router.Route("/download/provider", func(r chi.Router) {
+		r.Use(reg.ProviderDownloadAuth)
+		r.Get("/{namespace}/{name}/{version}/asset/{assetName}", reg.ProviderAssetDownload())
 	})
 }
 
@@ -247,14 +271,16 @@ func (reg *Registry) Health() http.HandlerFunc {
 }
 
 type ServiceDiscoveryResponse struct {
-	ModulesV1 string `json:"modules.v1"`
+	ModulesV1   string `json:"modules.v1"`
+	ProvidersV1 string `json:"providers.v1"`
 }
 
 // ServiceDiscovery returns a handler that returns a JSON payload for Terraform service discovery.
 // https://www.terraform.io/internals/module-registry-protocol
 func (reg *Registry) ServiceDiscovery() http.HandlerFunc {
 	spec := ServiceDiscoveryResponse{
-		ModulesV1: "/v1/modules/",
+		ModulesV1:   "/v1/modules/",
+		ProvidersV1: "/v1/providers/",
 	}
 
 	resp, err := json.Marshal(spec)
@@ -345,4 +371,149 @@ func (reg *Registry) ModuleDownload() http.HandlerFunc {
 		w.Header().Set("X-Terraform-Get", ver.SourceURL)
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// ProviderVersions returns a handler that returns a list of available versions for a provider.
+// https://developer.hashicorp.com/terraform/internals/provider-registry-protocol#list-available-versions
+func (reg *Registry) ProviderVersions() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var (
+			namespace = chi.URLParam(r, "namespace")
+			name      = chi.URLParam(r, "name")
+		)
+
+		ver, err := reg.providerStore.ListProviderVersions(r.Context(), namespace, name)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			reg.logger.Error("ListProviderVersions", zap.Errors("err", []error{err}))
+			return
+		}
+
+		err = json.NewEncoder(w).Encode(ver)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			reg.logger.Error("ListProviderVersions", zap.Errors("err", []error{err}))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// ProviderDownload returns a handler that returns a download link for a specific version of a provider.
+// https://developer.hashicorp.com/terraform/internals/provider-registry-protocol#find-a-provider-package
+func (reg *Registry) ProviderDownload() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var (
+			namespace = chi.URLParam(r, "namespace")
+			name      = chi.URLParam(r, "name")
+			version   = chi.URLParam(r, "version")
+			os        = chi.URLParam(r, "os")
+			arch      = chi.URLParam(r, "arch")
+		)
+
+		provider, err := reg.providerStore.GetProviderVersion(r.Context(), namespace, name, version, os, arch)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			reg.logger.Error("GetProviderVersion", zap.Errors("err", []error{err}))
+			return
+		}
+
+		// Terraform does not send registry auth headers when downloading assets, we add a
+		// token as query parameter to be able to protect the download routes which are
+		// used when assets are not publicly available.
+		if strings.HasPrefix(provider.DownloadURL, "/download") && !reg.IsAuthDisabled {
+			// Create a copy of the provider before we modify URLs
+			provider = provider.Copy()
+
+			// create a token valid for 10 seconds. Should be more than enough.
+			token := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 10)),
+				Issuer:    "terraform-registry",
+			})
+
+			tokenString, err := token.SignedString(reg.AssetDownloadAuthSecret)
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				reg.logger.Error("GetProviderVersion: unable to create token", zap.Errors("err", []error{err}))
+				return
+			}
+
+			provider.DownloadURL = fmt.Sprintf("%s?token=%s", provider.DownloadURL, tokenString)
+			provider.SHASumsURL = fmt.Sprintf("%s?token=%s", provider.SHASumsURL, tokenString)
+			provider.SHASumsSignatureURL = fmt.Sprintf("%s?token=%s", provider.SHASumsSignatureURL, tokenString)
+		}
+
+		err = json.NewEncoder(w).Encode(provider)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			reg.logger.Error("GetProviderVersion", zap.Errors("err", []error{err}))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// ProviderAssetDownload returns a handler that returns a provider asset.
+// When a provider binaries is not hosted on a public webserver, this handler can be used to fetch
+// assets directly from the store
+func (reg *Registry) ProviderAssetDownload() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var (
+			owner     = chi.URLParam(r, "namespace")
+			repo      = chi.URLParam(r, "name")
+			tag       = chi.URLParam(r, "version")
+			assetName = chi.URLParam(r, "assetName")
+		)
+
+		asset, err := reg.providerStore.GetProviderAsset(r.Context(), owner, repo, tag, assetName)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			reg.logger.Error("ProviderAssetDownload", zap.Errors("err", []error{err}))
+			return
+		}
+		defer asset.Close()
+
+		written, err := io.Copy(w, asset)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			reg.logger.Error("ProviderAssetDownload", zap.Errors("err", []error{err}))
+			return
+		}
+
+		reg.logger.Debug(fmt.Sprintf("ProviderAssetDownload: wrote %d bytes to response", written))
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func (reg *Registry) ProviderDownloadAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if reg.IsAuthDisabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		tokenString := r.URL.Query().Get("token")
+		if tokenString == "" {
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			reg.logger.Debug("ProviderDownloadAuth: Token query parameter missing or empty")
+			return
+		}
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			return reg.AssetDownloadAuthSecret, nil
+		})
+
+		switch {
+		case token.Valid:
+			next.ServeHTTP(w, r)
+			return
+		case errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet):
+			reg.logger.Error("ProviderDownloadAuth: Token is expired or not valid yet")
+		default:
+			reg.logger.Error("ProviderDownloadAuth: Token not valid")
+		}
+
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+	})
 }
