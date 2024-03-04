@@ -8,6 +8,7 @@ package github
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-github/v43/github"
@@ -35,7 +36,7 @@ func TestGithubStore(t *testing.T) {
 			ownerFilter: "test-owner",
 			topicFilter: "test-topic",
 			client:      c,
-			cache:       make(map[string][]*core.ModuleVersion),
+			moduleCache: make(map[string][]*core.ModuleVersion),
 			logger:      zap.NewNop(),
 		}
 
@@ -62,7 +63,7 @@ func TestGithubStore(t *testing.T) {
 			ownerFilter: "test-owner",
 			topicFilter: "test-topic",
 			client:      c,
-			cache:       make(map[string][]*core.ModuleVersion),
+			moduleCache: make(map[string][]*core.ModuleVersion),
 			logger:      zap.NewNop(),
 		}
 		store.client = c
@@ -109,7 +110,7 @@ func TestGetModuleVersion(t *testing.T) {
 		ownerFilter: "test-owner",
 		topicFilter: "test-topic",
 		client:      c,
-		cache:       make(map[string][]*core.ModuleVersion),
+		moduleCache: make(map[string][]*core.ModuleVersion),
 		logger:      zap.NewNop(),
 	}
 
@@ -175,7 +176,7 @@ func TestListModuleVersions(t *testing.T) {
 		ownerFilter: "test-owner",
 		topicFilter: "test-topic",
 		client:      c,
-		cache:       make(map[string][]*core.ModuleVersion),
+		moduleCache: make(map[string][]*core.ModuleVersion),
 		logger:      zap.NewNop(),
 	}
 
@@ -201,4 +202,30 @@ func TestListModuleVersions(t *testing.T) {
 		is.Equal(versions, nil)
 	})
 
+}
+
+func Test_extractOsArch(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   string
+		result core.Platform
+		found  bool
+	}{
+		{"name", "terraform-provider-test_1.0.3_darwin_amd64.zip", core.Platform{OS: "darwin", Arch: "amd64"}, true},
+		{"name", "terraform-provider-test_1.0.3_darwin_arm64.zip", core.Platform{OS: "darwin", Arch: "arm64"}, true},
+		{"name", "terraform-provider-test_1.0.3_linux_amd64.zip", core.Platform{OS: "linux", Arch: "amd64"}, true},
+		{"name", "terraform-provider-test_1.0.3_linux_arm64.zip", core.Platform{OS: "linux", Arch: "arm64"}, true},
+		{"name", "terraform-provider-test_1.0.3_ugga_arm644.zip", core.Platform{}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, found := extractOsArch(tt.args)
+			if !reflect.DeepEqual(result, tt.result) {
+				t.Errorf("extractOsArch() result = %v, want %v", result, tt.result)
+			}
+			if found != tt.found {
+				t.Errorf("extractOsArch() found = %v, want %v", found, tt.found)
+			}
+		})
+	}
 }

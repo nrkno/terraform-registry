@@ -38,7 +38,7 @@ func verifyServiceDiscovery(t *testing.T, resp *http.Response) {
 
 	is.Equal(
 		compactJSON.String(),
-		`{"modules.v1":"/v1/modules/"}`,
+		`{"modules.v1":"/v1/modules/","providers.v1":"/v1/providers/"}`,
 	)
 }
 
@@ -333,8 +333,11 @@ func verifyRoute(t *testing.T, resp *http.Response, path string, authenticated b
 	}
 	healthUrl := regexp.MustCompile("^/health($|[?].*)")
 	wellknownUrl := regexp.MustCompile(`^/\.well-known/terraform\.json($|[?].*)`)
-	downloadRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/[^/]+/download($|[?].*)")
-	versionRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/versions($|[?].*)")
+	moduleDownloadRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/[^/]+/download($|[?].*)")
+	moduleVersionRoute := regexp.MustCompile("^/v1/modules/[^/]+/[^/]+/[^/]+/versions($|[?].*)")
+	providerDownloadRoute := regexp.MustCompile("^/v1/providers/[^/]+/[^/]+/versions($|[?].*)")
+	providerVersionRoute := regexp.MustCompile("^/v1/providers/[^/]+/[^/]+/[^/]+/download/[^/]+/[^/]+($|[?].*)")
+	providerDownloadAssetRoute := regexp.MustCompile("^/download/provider[^/]+/[^/]+/[^/]+/assets($|[?].*)")
 	switch {
 	case path == "/":
 		t.Logf("Checking index path '%s', parsed path is '%s'", path, url.Path)
@@ -347,26 +350,41 @@ func verifyRoute(t *testing.T, resp *http.Response, path string, authenticated b
 	case wellknownUrl.MatchString(path):
 		t.Logf("Checking well known, path '%s'", path)
 		verifyServiceDiscovery(t, resp)
-	case authenticated && versionRoute.MatchString(path):
-		t.Logf("Checking version, path '%s'", path)
+	case authenticated && moduleVersionRoute.MatchString(path):
+		t.Logf("Checking module version, path '%s'", path)
 		if strings.HasPrefix(path, "/v1/modules/hashicorp/consul/aws/versions") {
 			verifyModuleVersions(t, resp, http.StatusOK, []string{"2.2.2"})
 		} else {
 			is.Equal(resp.StatusCode, http.StatusNotFound)
 		}
-	case authenticated && downloadRoute.MatchString(path):
-		t.Logf("Checking download, path '%s'", path)
+	case authenticated && moduleDownloadRoute.MatchString(path):
+		t.Logf("Checking module download, path '%s'", path)
 		if strings.HasPrefix(path, "/v1/modules/hashicorp/consul/aws/2.2.2/download") {
 			verifyDownload(t, resp, http.StatusNoContent, "git::ssh://git@github.com/hashicorp/consul.git?ref=v2.2.2")
 		} else {
 			is.Equal(resp.StatusCode, http.StatusNotFound)
 		}
+	case authenticated && providerVersionRoute.MatchString(path):
+		t.Logf("Checking provider version, path '%s'", path)
+		if strings.HasPrefix(path, "/v1/providers/hashicorp/aws/versions") {
+			verifyModuleVersions(t, resp, http.StatusOK, []string{"2.2.2"})
+		} else {
+			is.Equal(resp.StatusCode, http.StatusNotFound)
+		}
+	case authenticated && providerDownloadRoute.MatchString(path):
+		t.Logf("Checking provider download, path '%s'", path)
+		is.Equal(resp.StatusCode, http.StatusNotFound)
+
+	case authenticated && providerDownloadAssetRoute.MatchString(path):
+		t.Logf("Checking provider asset download, path '%s'", path)
+		is.Equal(resp.StatusCode, http.StatusNotFound)
+
 	case authenticated && (url.Path == "/v1" || strings.HasPrefix(url.Path, "/v1/")):
 		t.Logf("Checking authenticated v1, path '%s'", path)
 		t.Logf("Response is '%v'", resp.StatusCode)
 		t.Logf("authenticated %v", authenticated)
 		is.Equal(resp.StatusCode, http.StatusNotFound)
-	case (url.Path == "/v1" || strings.HasPrefix(url.Path, "/v1/")):
+	case url.Path == "/v1" || strings.HasPrefix(url.Path, "/v1/"):
 		//case v1Url.MatchString(path):
 		t.Logf("Checking unathenticated v1, path '%s', parsed path is '%s'", path, url.Path)
 		t.Logf("Fragment is '%v'", url.Fragment)
@@ -402,6 +420,9 @@ func FuzzRoutes(f *testing.F) {
 		"/v1/modules/hashicorp/consul/aws/versions",
 		"/v1/modules/hashicorp/consul/aws/2.2.2/download",
 		"/v1/modules/does/not/exist/versions",
+		"/v1/providers/hashicorp/aws/versions",
+		"/v1/providers/hashicorp/aws/2.2.2/download/darwin/arm64",
+		"/v1/providers/does/not/exist/versions",
 	} {
 		f.Add(seed)
 	}
@@ -409,6 +430,7 @@ func FuzzRoutes(f *testing.F) {
 		defer func() {
 			recover()
 		}()
+
 		reg := setupTestRegistry()
 		reg.SetAuthTokens(map[string]string{
 			"foo": "testauth",

@@ -10,8 +10,10 @@ go 1.21
 toolchain go1.21.4
 
 require (
+	github.com/ProtonMail/go-crypto v1.0.0
 	github.com/aws/aws-sdk-go v1.50.26
 	github.com/go-chi/chi/v5 v5.0.12
+	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/go-github/v43 v43.0.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/matryer/is v1.4.1
@@ -22,6 +24,7 @@ require (
 )
 
 require (
+	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-github/v59 v59.0.0 // indirect
@@ -33,6 +36,7 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.19.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
