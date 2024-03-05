@@ -157,7 +157,23 @@ func (s *GitHubStore) GetProviderVersion(ctx context.Context, namespace string, 
 }
 
 func (s *GitHubStore) GetProviderAsset(ctx context.Context, owner string, repo string, tag string, assetName string) (io.ReadCloser, error) {
-	// TODO check if provider exists
+	nameKey := strings.TrimPrefix(repo, "terraform-provider-")
+	key := cacheKey(owner, nameKey)
+	versions, ok := s.providerVersionsCache[key]
+	if !ok {
+		return nil, fmt.Errorf("provider '%s' not found", key)
+	}
+
+	found := false
+	for _, version := range versions.Versions {
+		if strings.TrimPrefix(tag, "v") == version.Version {
+			found = true
+		}
+	}
+
+	if !found {
+		return nil, fmt.Errorf("provider version '%s' not found", tag)
+	}
 
 	releases, _, err := s.client.Repositories.GetReleaseByTag(ctx, owner, repo, tag)
 	if err != nil {
