@@ -67,6 +67,7 @@ type GitHubStore struct {
 	moduleCache           map[string][]*core.ModuleVersion
 	providerVersionsCache map[string]*core.ProviderVersions
 	providerCache         map[string]*core.Provider
+	providerIgnoreCache   sync.Map
 	moduleMut             sync.RWMutex
 	providerMut           sync.RWMutex
 
@@ -253,27 +254,36 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 			var platforms []core.Platform
 			version := strings.TrimPrefix(release.GetName(), "v")
 
+			if _, ok := s.providerIgnoreCache.Load(cacheKey(nameKey, version)); ok {
+				s.logger.Debug(fmt.Sprintf("ignoring release [%s/%s], previously found to be not valid", nameKey, version))
+				continue
+			}
+
 			SHASums, SHASumURL, SHASumFileName, err := s.getSHA256Sums(ctx, owner, name, release.Assets)
 			if err != nil {
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s]- could not find SHA checksums: %s", nameKey, version, err))
+				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
 				continue
 			}
 
 			// not considered a valid release if a shasum file was not part of the release
 			if SHASumURL == "" {
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - could not find SHA checksums", nameKey, version))
+				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
 				continue
 			}
 
 			providerProtocols, err := s.getProviderProtocols(ctx, owner, name, release.Assets)
 			if err != nil {
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - unable to identify provider protocol", nameKey, version))
+				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
 				continue
 			}
 
 			keys, err := s.getGPGPublicKey(ctx, release, owner, name)
 			if err != nil || len(keys) != 1 {
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - unable to get GPG Public Key", nameKey, version))
+				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
 				continue
 			}
 
