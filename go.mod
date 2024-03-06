@@ -13,7 +13,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.0.0
 	github.com/aws/aws-sdk-go v1.50.26
 	github.com/go-chi/chi/v5 v5.0.12
-	github.com/golang-jwt/jwt/v5 v5.2.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-github/v43 v43.0.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/matryer/is v1.4.1
