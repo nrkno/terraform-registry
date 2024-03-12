@@ -302,6 +302,7 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 				if repo.GetPrivate() {
 					downloadUrl = fmt.Sprintf("/download/provider/%s/%s/v%s/asset/%s", owner, name, version, asset.GetName())
 					SHASumURL = fmt.Sprintf("/download/provider/%s/%s/v%s/asset/%s", owner, name, version, SHASumFileName)
+					SHASumSigURL = fmt.Sprintf("/download/provider/%s/%s/v%s/asset/%s", owner, name, version, SHASumFileName+".sig")
 				}
 
 				p := &core.Provider{
