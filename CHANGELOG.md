@@ -6,6 +6,20 @@ SPDX-License-Identifier: GPL-3.0-only
 
 # Changelog
 
+## [0.20.0](https://github.com/nrkno/terraform-registry/compare/v0.19.0...v0.20.0) (2024-04-17)
+
+
+### Features
+
+* add v1/providers protocol ([2a7295c](https://github.com/nrkno/terraform-registry/commit/2a7295c4c741eb6b3a90d8d69cde35b7effb2368))
+
+
+### Bug Fixes
+
+* check if provider version exists in cache before trying to download ([9b1b0b7](https://github.com/nrkno/terraform-registry/commit/9b1b0b7a933b866cc0c83c1ae2ddb6871bb62229))
+* ignore releases previously found not valid ([c9a3368](https://github.com/nrkno/terraform-registry/commit/c9a336837c3f606e66d2babe208526a7ce4705fd))
+* proxy signature url ([c2aa0db](https://github.com/nrkno/terraform-registry/commit/c2aa0db0ce5c3e01a733c05e726ef6f8b7c02aa3))
+
 ## [0.19.0](https://github.com/nrkno/terraform-registry/compare/v0.18.0...v0.19.0) (2024-01-17)
 
 
