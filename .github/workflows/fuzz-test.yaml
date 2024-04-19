@@ -28,7 +28,7 @@ jobs:
           go test "${pkg}" -fuzztime="${timeout}" -fuzz="${test}"
       - name: Upload fuzz failure seed corpus as run artifact
         if: failure()
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.3.2
         with:
           name: testdata
           path: pkg/registry/testdata
