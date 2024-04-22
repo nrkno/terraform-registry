@@ -53,8 +53,8 @@ jobs:
           LD_FLAGS+=" -w" # no DWARF debug info
           LD_FLAGS+=" -X 'main.buildDate=$(date --utc +%Y-%m-%dT%H:%M:%SZ)'"
           LD_FLAGS+=" -X 'main.version=${VERSION}'"
+          ARCHIVE_NAME="terraform-registry_${VERSION}_${GOOS}_${GOARCH}.tar.gz"
 
           make LD_FLAGS="${LD_FLAGS}" build
-          tar -cvzf terraform-registry.tar.gz terraform-registry
-          gh release upload ${VERSION} "terraform-registry.tar.gz#terraform-registry_${VERSION}_${GOOS}_${GOARCH}.tar.gz"
-          rm terraform-registry terraform-registry.tar.gz
+          tar -cvzf "${ARCHIVE_NAME}" terraform-registry
+          gh release upload ${VERSION} "${ARCHIVE_NAME}"
