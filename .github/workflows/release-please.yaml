@@ -56,5 +56,5 @@ jobs:
 
           make LD_FLAGS="${LD_FLAGS}" build
           tar -cvzf terraform-registry.tar.gz terraform-registry
-          gh release upload ${VERSION} terraform-registry.tar.gz%#%terraform-registry_${VERSION}_${GOOS}_${GOARCH}.tar.gz
+          gh release upload ${VERSION} "terraform-registry.tar.gz#terraform-registry_${VERSION}_${GOOS}_${GOARCH}.tar.gz"
           rm terraform-registry terraform-registry.tar.gz
