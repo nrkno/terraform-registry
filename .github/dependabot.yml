@@ -6,6 +6,8 @@ updates:
     interval: daily
     time: "13:00"
     timezone: "Europe/Oslo"
+  commit-message:
+    prefix: build(deps)
   open-pull-requests-limit: 5
   reviewers:
     - nrkno/iac-admins
