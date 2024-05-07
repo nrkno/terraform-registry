@@ -32,7 +32,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4.1.4
+        uses: actions/checkout@v4.1.5
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
       -
