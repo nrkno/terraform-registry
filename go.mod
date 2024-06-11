@@ -15,7 +15,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-github/v43 v43.0.0
-	github.com/hashicorp/go-version v1.6.0
+	github.com/hashicorp/go-version v1.7.0
 	github.com/matryer/is v1.4.1
 	github.com/migueleliasweb/go-github-mock v0.0.23
 	github.com/stretchr/testify v1.9.0
