@@ -20,7 +20,7 @@ require (
 	github.com/migueleliasweb/go-github-mock v1.0.0
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/oauth2 v0.21.0
+	golang.org/x/oauth2 v0.22.0
 )
 
 require (
