@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2022 NRK
 # SPDX-FileCopyrightText: 2023 NRK
+# SPDX-FileCopyrightText: 2024 NRK
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
@@ -32,10 +33,10 @@ reuse :
 		| grep -vP '^(./.git|./.reuse|./LICENSES/|./terraform-registry)' \
 		| grep -vP '(/\.git/|/\.terraform/)' \
 		| grep -vP '(\\.tf)$$' \
-		| xargs reuse addheader --license GPL-3.0-only --copyright NRK --year `date +%Y` --skip-unrecognised
+		| xargs reuse annotate --license GPL-3.0-only --copyright NRK --year `date +%Y` --skip-unrecognised
 		find . -type f -name '*.tf' \
 		| grep -vP '(/\.git/|/\.terraform/)' \
-		| xargs reuse addheader --license GPL-3.0-only --copyright NRK --year `date +%Y` --style python
+		| xargs reuse annotate --license GPL-3.0-only --copyright NRK --year `date +%Y` --style python
 
 .PHONY: clean
 clean :
