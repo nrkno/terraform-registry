@@ -120,7 +120,7 @@ $ make test
 This adds or updates licensing information of all relevant files in the
 respository using [reuse](https://git.fsfe.org/reuse/tool#install).
 It is available in some package managers and in The Python Package Index
-as `reuse` (`pip install reuse`).
+as `reuse` (`pip install reuse>=4.0.3`).
 
 ```
 $ make reuse
