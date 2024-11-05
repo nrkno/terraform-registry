@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2022 - 2024 NRK
 #
-# SPDX-License-Identifier: GPL-3.0-only
+# SPDX-License-Identifier: MIT
 
 BINARY_NAME := ./terraform-registry
 CMD_SOURCE  := ./cmd/terraform-registry
@@ -31,10 +31,10 @@ reuse :
 		| grep -vP '^(./.git|./.reuse|./LICENSES/|./terraform-registry)' \
 		| grep -vP '(/\.git/|/\.terraform/)' \
 		| grep -vP '(\\.tf)$$' \
-		| xargs reuse annotate --merge-copyrights --license GPL-3.0-only --copyright NRK --year `date +%Y` --skip-unrecognised
+		| xargs reuse annotate --merge-copyrights --license MIT --copyright NRK --year `date +%Y` --skip-unrecognised
 		find . -type f -name '*.tf' \
 		| grep -vP '(/\.git/|/\.terraform/)' \
-		| xargs reuse annotate --merge-copyrights --license GPL-3.0-only --copyright NRK --year `date +%Y` --style python
+		| xargs reuse annotate --merge-copyrights --license MIT --copyright NRK --year `date +%Y` --style python
 
 .PHONY: clean
 clean :

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2022 - 2024 NRK
 //
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: MIT
 
 module github.com/nrkno/terraform-registry
 
