@@ -1,7 +1,7 @@
 <!--
 SPDX-FileCopyrightText: 2022 - 2024 NRK
 
-SPDX-License-Identifier: GPL-3.0-only
+SPDX-License-Identifier: MIT
 -->
 
 # Terraform Registry
@@ -200,6 +200,6 @@ See [HACKING.md](./HACKING.md).
 
 ## License
 
-This project and all its files are licensed under GNU GPL v3 unless stated
+This project and all its files are licensed under MIT, unless stated
 otherwise with a different license header. See [./LICENSES](./LICENSES) for
 the full license text of all used licenses.
