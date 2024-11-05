@@ -1,4 +1,6 @@
----
+# SPDX-FileCopyrightText: 2022 - 2024 NRK
+#
+# SPDX-License-Identifier: MIT
 name: Fuzz Test
 
 on:

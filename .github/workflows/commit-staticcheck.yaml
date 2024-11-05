@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022 - 2024 NRK
+#
+# SPDX-License-Identifier: MIT
 name: "Golang Static checker"
 on:
  - pull_request
