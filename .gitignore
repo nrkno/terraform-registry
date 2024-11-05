@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 /terraform-registry
 /tmp
-.terraform*
+.terraform
 /*.env
 _tools/openssl/cert.crt
 _tools/openssl/cert.key
