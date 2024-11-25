@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"io"
 	"net/http"
 	"slices"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/nrkno/terraform-registry/pkg/core"
 	"go.uber.org/zap"
 )

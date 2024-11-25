@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ProtonMail/go-crypto/openpgp"
 	"io"
 	"net/http"
 	"regexp"
@@ -18,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/google/go-github/v43/github"
 	goversion "github.com/hashicorp/go-version"
 	"github.com/nrkno/terraform-registry/pkg/core"
