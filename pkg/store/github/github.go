@@ -219,7 +219,9 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 	}
 
 	if len(repos) == 0 {
-		s.logger.Warn("could not find any repos matching filter")
+		s.logger.Warn("could not find any provider repos matching filter",
+			zap.String("topic", s.providerTopicFilter),
+			zap.String("owner", s.providerOwnerFilter))
 	}
 
 	providerVersionsCache := make(map[string]*core.ProviderVersions)
