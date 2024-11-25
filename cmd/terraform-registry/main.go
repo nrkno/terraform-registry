@@ -242,9 +242,6 @@ func watchFile(ctx context.Context, filename string, interval time.Duration, cal
 			return
 		}
 		if sum := h.Sum(b); bytes.Equal(sum, lastSum) {
-			logger.Debug("watchFile: file contents unchanged. do nothing.",
-				zap.String("filename", filename),
-			)
 			return
 		} else {
 			logger.Debug("watchFile: file contents updated. triggering callback.",
