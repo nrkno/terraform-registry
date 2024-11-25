@@ -289,6 +289,14 @@ func gitHubRegistry(reg *registry.Registry) {
 	reg.SetModuleStore(store)
 	reg.SetProviderStore(store)
 
+	// Fill module store cache initially
+	logger.Debug("loading GitHub module store cache")
+	if err := store.ReloadCache(context.Background()); err != nil {
+		logger.Error("failed to load GitHub module store cache",
+			zap.Error(err),
+		)
+	}
+
 	// Fill provider store cache initially
 	if reg.IsProviderEnabled {
 		logger.Debug("loading GitHub provider store cache")
@@ -298,14 +306,6 @@ func gitHubRegistry(reg *registry.Registry) {
 				zap.Error(err),
 			)
 		}
-	}
-
-	// Fill module store cache initially
-	logger.Debug("loading GitHub module store cache")
-	if err := store.ReloadCache(context.Background()); err != nil {
-		logger.Error("failed to load GitHub module store cache",
-			zap.Error(err),
-		)
 	}
 
 	// Reload store caches on regular intervals
