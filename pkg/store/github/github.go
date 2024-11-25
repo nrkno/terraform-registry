@@ -392,6 +392,12 @@ func (s *GitHubStore) ReloadCache(ctx context.Context) error {
 		return err
 	}
 
+	if len(repos) == 0 {
+		s.logger.Warn("could not find any module repos matching filter",
+			zap.String("topic", s.topicFilter),
+			zap.String("owner", s.ownerFilter))
+	}
+
 	fresh := make(map[string][]*core.ModuleVersion)
 
 	for _, repo := range repos {
