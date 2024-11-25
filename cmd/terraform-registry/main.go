@@ -141,7 +141,7 @@ func main() {
 		}
 		if err := setEnvironmentFromJSONFile(prefix, filename); err != nil {
 			logger.Fatal("failed to load environment from file(s)",
-				zap.Errors("err", []error{err}),
+				zap.Error(err),
 			)
 		}
 	}
@@ -174,7 +174,7 @@ func main() {
 			tokens, err := parseAuthTokens(b)
 			if err != nil {
 				logger.Error("failed to load auth tokens",
-					zap.Errors("err", []error{err}),
+					zap.Error(err),
 				)
 			}
 
@@ -237,7 +237,7 @@ func watchFile(ctx context.Context, filename string, interval time.Duration, cal
 		if err != nil {
 			logger.Error("watchFile: failed to read file",
 				zap.String("filename", filename),
-				zap.Errors("err", []error{err}),
+				zap.Error(err),
 			)
 			return
 		}
@@ -295,7 +295,7 @@ func gitHubRegistry(reg *registry.Registry) {
 		err := store.ReloadProviderCache(context.Background())
 		if err != nil {
 			logger.Error("failed to load GitHub provider store cache",
-				zap.Errors("err", []error{err}),
+				zap.Error(err),
 			)
 		}
 	}
@@ -304,7 +304,7 @@ func gitHubRegistry(reg *registry.Registry) {
 	logger.Debug("loading GitHub module store cache")
 	if err := store.ReloadCache(context.Background()); err != nil {
 		logger.Error("failed to load GitHub module store cache",
-			zap.Errors("err", []error{err}),
+			zap.Error(err),
 		)
 	}
 
@@ -318,7 +318,7 @@ func gitHubRegistry(reg *registry.Registry) {
 			logger.Debug("reloading GitHub module store cache")
 			if err := store.ReloadCache(context.Background()); err != nil {
 				logger.Error("failed to reload GitHub module store cache",
-					zap.Errors("err", []error{err}),
+					zap.Error(err),
 				)
 			}
 			if reg.IsProviderEnabled {
@@ -326,7 +326,7 @@ func gitHubRegistry(reg *registry.Registry) {
 				err := store.ReloadProviderCache(context.Background())
 				if err != nil {
 					logger.Error("failed to load GitHub provider store cache",
-						zap.Errors("err", []error{err}),
+						zap.Error(err),
 					)
 				}
 			}
@@ -359,7 +359,7 @@ func s3Registry(reg *registry.Registry) {
 	store := s3.NewS3Store(s3Sess, S3Region, S3Bucket, logger.Named("s3 store"))
 	if err != nil {
 		logger.Fatal("failed to create S3 store",
-			zap.Errors("err", []error{err}),
+			zap.Error(err),
 		)
 	}
 	reg.SetModuleStore(store)
