@@ -243,7 +243,7 @@ func (reg *Registry) Index() http.HandlerFunc {
 			return
 		}
 		if _, err := w.Write(WelcomeMessage); err != nil {
-			reg.logger.Error("Index", zap.Errors("err", []error{err}))
+			reg.logger.Error("Index", zap.Error(err))
 		}
 	}
 }
@@ -264,7 +264,7 @@ func (reg *Registry) Health() http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(resp); err != nil {
-			reg.logger.Error("Health", zap.Errors("err", []error{err}))
+			reg.logger.Error("Health", zap.Error(err))
 		}
 	}
 }
@@ -284,7 +284,7 @@ func (reg *Registry) ServiceDiscovery() http.HandlerFunc {
 
 	resp, err := json.Marshal(spec)
 	if err != nil {
-		reg.logger.Panic("ServiceDiscovery", zap.Errors("err", []error{err}))
+		reg.logger.Panic("ServiceDiscovery", zap.Error(err))
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -294,7 +294,7 @@ func (reg *Registry) ServiceDiscovery() http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write(resp); err != nil {
-			reg.logger.Error("ServiceDiscovery", zap.Errors("err", []error{err}))
+			reg.logger.Error("ServiceDiscovery", zap.Error(err))
 		}
 	}
 }
@@ -324,7 +324,7 @@ func (reg *Registry) ModuleVersions() http.HandlerFunc {
 		versions, err := reg.moduleStore.ListModuleVersions(r.Context(), namespace, name, provider)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			reg.logger.Error("ListModuleVersions", zap.Errors("err", []error{err}))
+			reg.logger.Debug("ListModuleVersions", zap.Error(err))
 			return
 		}
 
@@ -339,12 +339,12 @@ func (reg *Registry) ModuleVersions() http.HandlerFunc {
 
 		b, err := json.Marshal(respObj)
 		if err != nil {
-			reg.logger.Error("ModuleVersions", zap.Errors("err", []error{err}))
+			reg.logger.Error("ModuleVersions", zap.Error(err))
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write(b); err != nil {
-			reg.logger.Error("ModuleVersions", zap.Errors("err", []error{err}))
+			reg.logger.Error("ModuleVersions", zap.Error(err))
 		}
 	}
 }
@@ -363,7 +363,7 @@ func (reg *Registry) ModuleDownload() http.HandlerFunc {
 		ver, err := reg.moduleStore.GetModuleVersion(r.Context(), namespace, name, provider, version)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			reg.logger.Error("GetModuleVersion", zap.Errors("err", []error{err}))
+			reg.logger.Error("GetModuleVersion", zap.Error(err))
 			return
 		}
 
@@ -384,14 +384,14 @@ func (reg *Registry) ProviderVersions() http.HandlerFunc {
 		ver, err := reg.providerStore.ListProviderVersions(r.Context(), namespace, name)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			reg.logger.Error("ListProviderVersions", zap.Errors("err", []error{err}))
+			reg.logger.Error("ListProviderVersions", zap.Error(err))
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(ver)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			reg.logger.Error("ListProviderVersions", zap.Errors("err", []error{err}))
+			reg.logger.Error("ListProviderVersions", zap.Error(err))
 			return
 		}
 
@@ -414,7 +414,7 @@ func (reg *Registry) ProviderDownload() http.HandlerFunc {
 		provider, err := reg.providerStore.GetProviderVersion(r.Context(), namespace, name, version, os, arch)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			reg.logger.Error("GetProviderVersion", zap.Errors("err", []error{err}))
+			reg.logger.Error("GetProviderVersion", zap.Error(err))
 			return
 		}
 
@@ -434,7 +434,7 @@ func (reg *Registry) ProviderDownload() http.HandlerFunc {
 			tokenString, err := token.SignedString(reg.AssetDownloadAuthSecret)
 			if err != nil {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				reg.logger.Error("GetProviderVersion: unable to create token", zap.Errors("err", []error{err}))
+				reg.logger.Error("GetProviderVersion: unable to create token", zap.Error(err))
 				return
 			}
 
@@ -446,7 +446,7 @@ func (reg *Registry) ProviderDownload() http.HandlerFunc {
 		err = json.NewEncoder(w).Encode(provider)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			reg.logger.Error("GetProviderVersion", zap.Errors("err", []error{err}))
+			reg.logger.Error("GetProviderVersion", zap.Error(err))
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -468,7 +468,7 @@ func (reg *Registry) ProviderAssetDownload() http.HandlerFunc {
 		asset, err := reg.providerStore.GetProviderAsset(r.Context(), owner, repo, tag, assetName)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			reg.logger.Error("ProviderAssetDownload", zap.Errors("err", []error{err}))
+			reg.logger.Error("ProviderAssetDownload", zap.Error(err))
 			return
 		}
 		defer asset.Close()
@@ -476,7 +476,7 @@ func (reg *Registry) ProviderAssetDownload() http.HandlerFunc {
 		written, err := io.Copy(w, asset)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			reg.logger.Error("ProviderAssetDownload", zap.Errors("err", []error{err}))
+			reg.logger.Error("ProviderAssetDownload", zap.Error(err))
 			return
 		}
 
