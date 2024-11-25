@@ -213,11 +213,6 @@ func (s *GitHubStore) findAsset(ctx context.Context, owner string, repo string, 
 // Should be called at least once after initialisation and probably on regular
 // intervals afterward to keep providerCache up-to-date.
 func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
-	var (
-		owner string
-		name  string
-	)
-
 	repos, err := s.searchProviderRepositories(ctx)
 	if err != nil {
 		return err
@@ -231,7 +226,8 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 	providerCache := make(map[string]*core.Provider)
 
 	for _, repo := range repos {
-		if owner, name, err = getOwnerRepoName(repo); err != nil {
+		owner, name, err := getOwnerRepoName(repo)
+		if err != nil {
 			return err
 		}
 
@@ -389,11 +385,6 @@ func (s *GitHubStore) getGPGPublicKey(ctx context.Context, release *github.Repos
 // Should be called at least once after initialisation and probably on regular
 // intervals afterward to keep moduleCache up-to-date.
 func (s *GitHubStore) ReloadCache(ctx context.Context) error {
-	var (
-		owner string
-		name  string
-	)
-
 	repos, err := s.searchModuleRepositories(ctx)
 	if err != nil {
 		return err
@@ -402,7 +393,8 @@ func (s *GitHubStore) ReloadCache(ctx context.Context) error {
 	fresh := make(map[string][]*core.ModuleVersion)
 
 	for _, repo := range repos {
-		if owner, name, err = getOwnerRepoName(repo); err != nil {
+		owner, name, err := getOwnerRepoName(repo)
+		if err != nil {
 			return err
 		}
 
