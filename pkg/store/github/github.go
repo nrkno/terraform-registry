@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -213,6 +214,8 @@ func (s *GitHubStore) findAsset(ctx context.Context, owner string, repo string, 
 // Should be called at least once after initialisation and probably on regular
 // intervals afterward to keep providerCache up-to-date.
 func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
+	var rateLimitErr *github.RateLimitError
+
 	repos, err := s.searchProviderRepositories(ctx)
 	if err != nil {
 		return err
@@ -258,13 +261,19 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 
 			SHASums, SHASumURL, SHASumFileName, err := s.getSHA256Sums(ctx, owner, name, release.Assets)
 			if err != nil {
-				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s]- could not find SHA checksums: %s", nameKey, version, err))
+				if errors.As(err, &rateLimitErr) {
+					return err
+				}
+				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - could not find SHA checksums: %s", nameKey, version, err))
 				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
 				continue
 			}
 
 			// not considered a valid release if a shasum file was not part of the release
 			if SHASumURL == "" {
+				if errors.As(err, &rateLimitErr) {
+					return err
+				}
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - could not find SHA checksums", nameKey, version))
 				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
 				continue
@@ -272,6 +281,9 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 
 			providerProtocols, err := s.getProviderProtocols(ctx, owner, name, release.Assets)
 			if err != nil {
+				if errors.As(err, &rateLimitErr) {
+					return err
+				}
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - unable to identify provider protocol", nameKey, version))
 				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
 				continue
@@ -279,6 +291,9 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 
 			keys, err := s.getGPGPublicKey(ctx, release, owner, name)
 			if err != nil || len(keys) != 1 {
+				if errors.As(err, &rateLimitErr) {
+					return err
+				}
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - unable to get GPG Public Key", nameKey, version))
 				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
 				continue

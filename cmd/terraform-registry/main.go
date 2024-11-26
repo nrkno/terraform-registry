@@ -322,10 +322,10 @@ func gitHubRegistry(reg *registry.Registry) {
 				)
 			}
 			if reg.IsProviderEnabled {
-				logger.Debug("loading GitHub provider store cache")
+				logger.Debug("reloading GitHub provider store cache")
 				err := store.ReloadProviderCache(context.Background())
 				if err != nil {
-					logger.Error("failed to load GitHub provider store cache",
+					logger.Error("failed to reload GitHub provider store cache",
 						zap.Error(err),
 					)
 				}
