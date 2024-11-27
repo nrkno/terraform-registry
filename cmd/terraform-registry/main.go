@@ -191,6 +191,7 @@ func main() {
 		logger.Warn("authentication disabled")
 	}
 
+	logger.Info("initialising stores")
 	// Configure the chosen store type
 	switch storeType {
 	case "github":
@@ -200,6 +201,7 @@ func main() {
 	default:
 		logger.Fatal("invalid store type", zap.String("selected", storeType))
 	}
+	logger.Info("store initialisation complete")
 
 	srv := http.Server{
 		Addr:              listenAddr,
