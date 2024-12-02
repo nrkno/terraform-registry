@@ -17,7 +17,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/matryer/is v1.4.1
 	github.com/migueleliasweb/go-github-mock v1.0.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.23.0
 )
