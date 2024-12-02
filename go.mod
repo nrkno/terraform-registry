@@ -5,8 +5,7 @@
 module github.com/nrkno/terraform-registry
 
 go 1.21
-
-toolchain go1.21.4
+toolchain go1.23.3
 
 require (
 	github.com/ProtonMail/go-crypto v1.1.4
@@ -16,7 +15,7 @@ require (
 	github.com/google/go-github/v43 v43.0.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/matryer/is v1.4.1
-	github.com/migueleliasweb/go-github-mock v1.0.1
+	github.com/migueleliasweb/go-github-mock v1.1.0
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.25.0
