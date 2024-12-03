@@ -4,7 +4,8 @@
 
 module github.com/nrkno/terraform-registry
 
-go 1.21
+go 1.23
+
 toolchain go1.23.3
 
 require (
