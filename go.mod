@@ -9,7 +9,7 @@ go 1.21
 toolchain go1.21.4
 
 require (
-	github.com/ProtonMail/go-crypto v1.1.3
+	github.com/ProtonMail/go-crypto v1.1.4
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/go-chi/chi/v5 v5.2.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
