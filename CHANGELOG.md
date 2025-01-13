@@ -6,6 +6,17 @@ SPDX-License-Identifier: MIT
 
 # Changelog
 
+## [0.20.1](https://github.com/nrkno/terraform-registry/compare/v0.20.0...v0.20.1) (2025-01-13)
+
+
+### Bug Fixes
+
+* don't update cache if ratelimited ([63d87a0](https://github.com/nrkno/terraform-registry/commit/63d87a0621cd4711c34b6a16622c3b45c466ecf4))
+* remove debug log for unchanged watchFile ([e70d874](https://github.com/nrkno/terraform-registry/commit/e70d8749c3b7004ad77f46dc7b38731ebb6fd683))
+* **store/github:** improve details in empty provider result warning ([cf733fb](https://github.com/nrkno/terraform-registry/commit/cf733fb033b49798b690e551cd726cf3d3a1ff23))
+* **store/github:** load module cache before providers ([a36dbbc](https://github.com/nrkno/terraform-registry/commit/a36dbbc1032a9fa1c8da81169989a83bc82f2844))
+* **store/github:** log warning when no module repos were found ([b70f72f](https://github.com/nrkno/terraform-registry/commit/b70f72f5d505230fd50ecda039bdf0a6a6a53ecf))
+
 ## [0.20.0](https://github.com/nrkno/terraform-registry/compare/v0.19.0...v0.20.0) (2024-04-17)
 
 
