@@ -3,36 +3,36 @@
 # SPDX-License-Identifier: MIT
 version: 2
 updates:
-- package-ecosystem: gomod
-  directory: "/"
-  schedule:
-    interval: weekly
-    time: "13:00"
-    timezone: "Europe/Oslo"
-  commit-message:
-    prefix: build(deps)
-  open-pull-requests-limit: 5
-  reviewers:
-    - nrkno/iac-admins
-- package-ecosystem: "github-actions"
-  directory: "/"
-  schedule:
-    interval: "daily"
-    time: "13:00"
-    timezone: "Europe/Oslo"
-  commit-message:
-    prefix: ci(workflow)
-  open-pull-requests-limit: 5
-  reviewers:
-    - nrkno/iac-admins
-- package-ecosystem: "docker"
-  directory: "/"
-  schedule:
-    interval: "daily"
-    time: "13:00"
-    timezone: "Europe/Oslo"
-  commit-message:
-    prefix: build(docker)
-  open-pull-requests-limit: 5
-  reviewers:
-    - nrkno/iac-admins
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+      time: "13:00"
+      timezone: "Europe/Oslo"
+    commit-message:
+      prefix: build(deps)
+    open-pull-requests-limit: 5
+    reviewers:
+      - kystverket/infrastructure-team
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "13:00"
+      timezone: "Europe/Oslo"
+    commit-message:
+      prefix: ci(workflow)
+    open-pull-requests-limit: 5
+    reviewers:
+      - kystverket/infrastructure-team
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "13:00"
+      timezone: "Europe/Oslo"
+    commit-message:
+      prefix: build(docker)
+    open-pull-requests-limit: 5
+    reviewers:
+      - kystverket/infrastructure-team

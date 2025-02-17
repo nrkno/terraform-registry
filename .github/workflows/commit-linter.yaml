@@ -1,12 +1,12 @@
 # SPDX-FileCopyrightText: 2022 - 2024 NRK
 #
 # SPDX-License-Identifier: MIT
-on: [push, pull_request]
-
-name: Commit lint and release
-jobs:
-  lint_release:
-    uses: nrkno/github-workflow-semantic-release/.github/workflows/workflow.yaml@v3.1.1
-    with:
-      release-enabled: false
-      runs-on: ubuntu-latest
+# on: [push, pull_request]
+#
+# name: Commit lint and release
+# jobs:
+#   lint_release:
+#     uses: nrkno/github-workflow-semantic-release/.github/workflows/workflow.yaml@v3.1.1
+#     with:
+#       release-enabled: false
+#       runs-on: ubuntu-latest

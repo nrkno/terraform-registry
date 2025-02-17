@@ -1,63 +1,63 @@
 # SPDX-FileCopyrightText: 2022 - 2024 NRK
 #
 # SPDX-License-Identifier: MIT
-on:
-  push:
-    branches:
-      - main
-
-name: Release
-jobs:
-  release-please:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: googleapis/release-please-action@v4.1.3
-        id: release-please
-        with:
-          config-file: .release-please-config.json
-          manifest-file: .release-please-manifest.json
-    outputs:
-      release_created: ${{ steps.release-please.outputs.release_created }}
-      tag_name: ${{ steps.release-please.outputs.tag_name }}
-
-  build-binaries:
-    name: Build and push binaries
-    runs-on: ubuntu-latest
-    needs: release-please
-    if: needs.release-please.outputs.release_created
-    strategy:
-      matrix:
-        arch:
-          - amd64
-          - arm64
-        os:
-          - linux
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
-      -
-        name: Setup Go
-        uses: actions/setup-go@v5.3.0
-        with:
-          go-version-file: 'go.mod'
-      -
-        name: Build and upload
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
-          VERSION: ${{ needs.release-please.outputs.tag_name }}
-        run: |
-          LD_FLAGS=""
-          LD_FLAGS+=" -s" # no debug symbols
-          LD_FLAGS+=" -w" # no DWARF debug info
-          LD_FLAGS+=" -X 'main.buildDate=$(date --utc +%Y-%m-%dT%H:%M:%SZ)'"
-          LD_FLAGS+=" -X 'main.version=${VERSION}'"
-          ARCHIVE_NAME="terraform-registry_${VERSION}_${GOOS}_${GOARCH}.tar.gz"
-
-          make LD_FLAGS="${LD_FLAGS}" build
-          tar -cvzf "${ARCHIVE_NAME}" terraform-registry
-          gh release upload ${VERSION} "${ARCHIVE_NAME}"
+# on:
+#   push:
+#     branches:
+#       - main
+#
+# name: Release
+# jobs:
+#   release-please:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: googleapis/release-please-action@v4.1.3
+#         id: release-please
+#         with:
+#           config-file: .release-please-config.json
+#           manifest-file: .release-please-manifest.json
+#     outputs:
+#       release_created: ${{ steps.release-please.outputs.release_created }}
+#       tag_name: ${{ steps.release-please.outputs.tag_name }}
+#
+#   build-binaries:
+#     name: Build and push binaries
+#     runs-on: ubuntu-latest
+#     needs: release-please
+#     if: needs.release-please.outputs.release_created
+#     strategy:
+#       matrix:
+#         arch:
+#           - amd64
+#           - arm64
+#         os:
+#           - linux
+#     steps:
+#       -
+#         name: Checkout
+#         uses: actions/checkout@v4.2.2
+#         with:
+#           ref: ${{ needs.release-please.outputs.tag_name }}
+#       -
+#         name: Setup Go
+#         uses: actions/setup-go@v5.3.0
+#         with:
+#           go-version-file: 'go.mod'
+#       -
+#         name: Build and upload
+#         env:
+#           GH_TOKEN: ${{ github.token }}
+#           GOOS: ${{ matrix.os }}
+#           GOARCH: ${{ matrix.arch }}
+#           VERSION: ${{ needs.release-please.outputs.tag_name }}
+#         run: |
+#           LD_FLAGS=""
+#           LD_FLAGS+=" -s" # no debug symbols
+#           LD_FLAGS+=" -w" # no DWARF debug info
+#           LD_FLAGS+=" -X 'main.buildDate=$(date --utc +%Y-%m-%dT%H:%M:%SZ)'"
+#           LD_FLAGS+=" -X 'main.version=${VERSION}'"
+#           ARCHIVE_NAME="terraform-registry_${VERSION}_${GOOS}_${GOARCH}.tar.gz"
+#
+#           make LD_FLAGS="${LD_FLAGS}" build
+#           tar -cvzf "${ARCHIVE_NAME}" terraform-registry
+#           gh release upload ${VERSION} "${ARCHIVE_NAME}"
