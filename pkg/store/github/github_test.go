@@ -85,8 +85,8 @@ func TestGetModuleVersion(t *testing.T) {
 	result.Total = &total
 	result.Repositories = []*github.Repository{
 		{
-			Name:     github.String("testrepo"),
-			FullName: github.String("test-owner/test-repo"),
+			Name:     github.Ptr("testrepo"),
+			FullName: github.Ptr("test-owner/test-repo"),
 		},
 	}
 	mockedHTTPClient := mock.NewMockedHTTPClient(
@@ -98,7 +98,7 @@ func TestGetModuleVersion(t *testing.T) {
 			mock.GetReposTagsByOwnerByRepo,
 			[]github.RepositoryTag{
 				{
-					Name: github.String("v1.0.0"),
+					Name: github.Ptr("v1.0.0"),
 				},
 			},
 		),
@@ -142,8 +142,8 @@ func TestListModuleVersions(t *testing.T) {
 	result.Total = &total
 	result.Repositories = []*github.Repository{
 		{
-			Name:     github.String("testrepo"),
-			FullName: github.String("test-owner/test-repo"),
+			Name:     github.Ptr("testrepo"),
+			FullName: github.Ptr("test-owner/test-repo"),
 		},
 	}
 	mockedHTTPClient := mock.NewMockedHTTPClient(
@@ -155,16 +155,16 @@ func TestListModuleVersions(t *testing.T) {
 			mock.GetReposTagsByOwnerByRepo,
 			[]github.RepositoryTag{
 				{
-					Name: github.String("v1.0.0"),
+					Name: github.Ptr("v1.0.0"),
 				},
 				{
-					Name: github.String("v1.0.1"),
+					Name: github.Ptr("v1.0.1"),
 				},
 				{
-					Name: github.String("v2.0.0"),
+					Name: github.Ptr("v2.0.0"),
 				},
 				{
-					Name: github.String("non-semver"),
+					Name: github.Ptr("non-semver"),
 				},
 			},
 		),
