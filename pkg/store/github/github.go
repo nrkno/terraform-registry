@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
-	"github.com/google/go-github/v43/github"
+	"github.com/google/go-github/v69/github"
 	goversion "github.com/hashicorp/go-version"
 	"github.com/nrkno/terraform-registry/pkg/core"
 	"go.uber.org/zap"
