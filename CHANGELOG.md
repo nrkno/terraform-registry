@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2023 - 2024 NRK
+SPDX-FileCopyrightText: 2023 - 2025 NRK
 
 SPDX-License-Identifier: MIT
 -->
