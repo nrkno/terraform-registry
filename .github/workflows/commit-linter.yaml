@@ -6,7 +6,7 @@ on: [push, pull_request]
 name: Commit lint and release
 jobs:
   lint_release:
-    uses: nrkno/github-workflow-semantic-release/.github/workflows/workflow.yaml@v3.1.1
+    uses: nrkno/github-workflow-semantic-release/.github/workflows/workflow.yaml@v4.2.1
     with:
       release-enabled: false
       runs-on: ubuntu-latest
