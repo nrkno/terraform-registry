@@ -29,7 +29,7 @@ jobs:
           docker image save ${DOCKER_TAG} -o image.tar
       -
         name: Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@0.31.0
         with:
           input: image.tar
           format: 'table'
