@@ -8,7 +8,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -18,11 +20,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ProtonMail/go-crypto/openpgp"
-	"github.com/google/go-github/v69/github"
+	"github.com/ProtonMail/go-crypto/openpgpogle/go-github/v69/github"
 	goversion "github.com/hashicorp/go-version"
 	"github.com/nrkno/terraform-registry/pkg/core"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
+
+	"github.com/golang-jwt/jwt"
+	"github.com/google/go-github/v51/github"
 	"golang.org/x/oauth2"
 )
 
@@ -74,11 +79,19 @@ type GitHubStore struct {
 	logger *zap.Logger
 }
 
-func NewGitHubStore(ownerFilter, topicFilter, providerOwnerFilter, providerTopicFilter, accessToken string, logger *zap.Logger) *GitHubStore {
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: accessToken},
-	)
-	c := oauth2.NewClient(context.TODO(), ts)
+// Github auth parameters, either provide an accessToken string or private pem and app id.
+type GithubAuthParams struct {
+	PrivatePem    []byte // private pem bytes from github app installation, needs ApplicationID
+	ApplicationID string // App id from github, needs PrivatePem
+	AccessToken   string // AccessToken
+
+}
+
+func NewGitHubStore(ownerFilter, topicFilter, providerOwnerFilter, providerTopicFilter string, logger *zap.Logger, authParams *GithubAuthParams) *GitHubStore {
+	client, err := newGithubClient(*authParams)
+	if err != nil {
+		return nil
+	}
 
 	if logger == nil {
 		logger = zap.NewNop()
@@ -89,12 +102,70 @@ func NewGitHubStore(ownerFilter, topicFilter, providerOwnerFilter, providerTopic
 		topicFilter:           topicFilter,
 		providerOwnerFilter:   providerOwnerFilter,
 		providerTopicFilter:   providerTopicFilter,
-		client:                github.NewClient(c),
+		client:                client,
 		moduleCache:           make(map[string][]*core.ModuleVersion),
 		providerVersionsCache: make(map[string]*core.ProviderVersions),
 		providerCache:         make(map[string]*core.Provider),
 		logger:                logger,
 	}
+}
+
+// newGithubClient returns an authenticated github client lasting 1 hour
+// leave repos as empty string if you need a token for all repos
+func newGithubClient(params GithubAuthParams) (client *github.Client, err error) {
+	if params.AccessToken != "" {
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: params.AccessToken},
+		)
+		httpClient := oauth2.NewClient(context.TODO(), ts)
+		return github.NewClient(httpClient), nil
+	}
+	if params.PrivatePem == nil || params.ApplicationID == "" {
+		return nil, fmt.Errorf("invalid parameters, either AccessToken or PrivatePem and ApplicationID must be set")
+	}
+
+	block, _ := pem.Decode([]byte(params.PrivatePem))
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a temporary jwt signed by the privateKey
+	unsignedToken := jwt.New(jwt.SigningMethodRS256)
+	claims := unsignedToken.Claims.(jwt.MapClaims)
+	claims["iat"] = time.Now().Add(-1 * time.Minute).Unix()
+	claims["exp"] = time.Now().Add(4 * time.Minute).Unix()
+	claims["iss"] = params.ApplicationID
+
+	signedToken, err := unsignedToken.SignedString(privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a temporary authenticated http client from the jwt
+	tmpHttpClient := oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(&oauth2.Token{AccessToken: signedToken}))
+	// create a temporary github client with the http client
+	tmpClient := github.NewClient(tmpHttpClient)
+
+	// list github app installations to gather the installation IDs
+	installations, _, err := tmpClient.Apps.ListInstallations(context.Background(), &github.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	// if your app has many installations, here you will have to find the one you need
+	installationID := *installations[0].ID
+
+	// create an installation token using the signedToken, this is the actual token your github client will use, lasting 1 hour
+	installationToken, _, err := tmpClient.Apps.CreateInstallationToken(context.Background(), installationID, &github.InstallationTokenOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// create a new github client using your installation token
+	httpClient := oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(&oauth2.Token{AccessToken: installationToken.GetToken()}))
+	client = github.NewClient(httpClient)
+
+	return client, nil
 }
 
 // ListModuleVersions returns a list of module versions.
