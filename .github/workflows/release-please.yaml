@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 name: Release
 jobs:
   release-please:
@@ -33,18 +37,15 @@ jobs:
         os:
           - linux
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v5.0.0
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
-      -
-        name: Setup Go
+      - name: Setup Go
         uses: actions/setup-go@v5.5.0
         with:
-          go-version-file: 'go.mod'
-      -
-        name: Build and upload
+          go-version-file: "go.mod"
+      - name: Build and upload
         env:
           GH_TOKEN: ${{ github.token }}
           GOOS: ${{ matrix.os }}
@@ -61,3 +62,42 @@ jobs:
           make LD_FLAGS="${LD_FLAGS}" build
           tar -cvzf "${ARCHIVE_NAME}" terraform-registry
           gh release upload ${VERSION} "${ARCHIVE_NAME}"
+
+  build-containers:
+    name: Build and push container
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      attestations: write
+      id-token: write
+      issues: write
+      pull-requests: write
+    needs: release-please
+    if: needs.release-please.outputs.release_created
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+      - name: Get git tags as image tags
+        id: tags
+        run: |
+          TAGS=$(git tag --points-at HEAD | sed "s|^|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:|" | xargs | sed 's/ /,/g')
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.tags.outputs.tags }}
