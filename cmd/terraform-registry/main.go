@@ -49,6 +49,8 @@ var (
 	S3Bucket string
 
 	gitHubToken                string
+	githubPrivatePem           string
+	githubApplicationID        string
 	gitHubOwnerFilter          string
 	gitHubTopicFilter          string
 	gitHubProvidersOwnerFilter string
@@ -148,6 +150,8 @@ func main() {
 
 	// Load environment variables here!
 	gitHubToken = os.Getenv("GITHUB_TOKEN")
+	githubPrivatePem = os.Getenv("GITHUB_PRIVATE_PEM")
+	githubApplicationID = os.Getenv("GITHUB_APPLICATION_ID")
 	assetDownloadAuthSecret = os.Getenv("ASSET_DOWNLOAD_AUTH_SECRET")
 
 	reg := registry.NewRegistry(logger)
@@ -276,8 +280,8 @@ func watchFile(ctx context.Context, filename string, interval time.Duration, cal
 
 // gitHubRegistry configures the registry to use GitHubStore.
 func gitHubRegistry(reg *registry.Registry) {
-	if gitHubToken == "" {
-		logger.Fatal("missing environment var GITHUB_TOKEN")
+	if gitHubToken == "" && (githubPrivatePem == "" || githubApplicationID == "") {
+		logger.Fatal("either GITHUB_TOKEN must be set, or GITHUB_PRIVATE_PEM and GITHUB_APPLICATION_ID")
 	}
 	if gitHubOwnerFilter == "" && gitHubTopicFilter == "" {
 		logger.Fatal("at least one of -github-owner-filter and -github-topic-filter must be set")
@@ -287,7 +291,14 @@ func gitHubRegistry(reg *registry.Registry) {
 		logger.Fatal("at least one of -github-providers-owner-filter and -github-providers-topic-filter must be set when provider store is enabled")
 	}
 
-	store := github.NewGitHubStore(gitHubOwnerFilter, gitHubTopicFilter, gitHubProvidersOwnerFilter, gitHubProvidersTopicFilter, gitHubToken, logger.Named("github store"))
+	store, err := github.NewGitHubStore(gitHubOwnerFilter, gitHubTopicFilter, gitHubProvidersOwnerFilter, gitHubProvidersTopicFilter, github.GithubAuthParams{
+		AccessToken:   gitHubToken,
+		PrivatePem:    []byte(githubPrivatePem),
+		ApplicationID: githubApplicationID,
+	}, logger.Named("github store"))
+	if err != nil {
+		logger.Fatal(fmt.Sprintf("failed setting up github store, err: %s", err))
+	}
 	reg.SetModuleStore(store)
 	reg.SetProviderStore(store)
 

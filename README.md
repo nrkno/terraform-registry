@@ -104,8 +104,9 @@ by [applying topics to your organisation's GitHub repositories][repository topic
 The store is configured by setting up search filters for the owner/org, and a topic
 you want to use to expose repository releases in the registry.
 
-The registry requires a GitHub token that has read access to all repositories in the
+The registry requires authenticating to github with read access to all repositories in the
 organisation.
+If you are using a github app, set permissions to "contents:read-only" on organization level.
 
 [repository topics]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics
 
@@ -155,7 +156,10 @@ release:
 
 #### Environment variables
 
+Use either GITHUB_TOKEN or GITHUB_APPLICATION_ID and GITHUB_PRIVATE_PEM.
 - `GITHUB_TOKEN`: auth token for the GitHub API
+- `GITHUB_APPLICATION_ID`: application id of GitHub app to authenticate as
+- `GITHUB_PRIVATE_PEM`: private key as string of Github app
 
 #### Command line arguments
 
