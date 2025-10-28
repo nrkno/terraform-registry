@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
-	"github.com/google/go-github/v69/github"
+	"github.com/google/go-github/v76/github"
 	goversion "github.com/hashicorp/go-version"
 	"github.com/nrkno/terraform-registry/pkg/core"
 	"go.uber.org/zap"
@@ -74,27 +74,47 @@ type GitHubStore struct {
 	logger *zap.Logger
 }
 
-func NewGitHubStore(ownerFilter, topicFilter, providerOwnerFilter, providerTopicFilter, accessToken string, logger *zap.Logger) *GitHubStore {
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: accessToken},
-	)
-	c := oauth2.NewClient(context.TODO(), ts)
+// Parameters for github authentication, either set AccessToken, or PrivatePem and ApplicationID
+type GithubAuthParams struct {
+	AccessToken   string
+	PrivatePem    []byte
+	ApplicationID string
+}
 
+func NewGitHubStore(ownerFilter, topicFilter, providerOwnerFilter, providerTopicFilter string, authParams GithubAuthParams, logger *zap.Logger) (*GitHubStore, error) {
+	var client *github.Client
+	if authParams.AccessToken != "" {
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: authParams.AccessToken},
+		)
+		c := oauth2.NewClient(context.TODO(), ts)
+		client = github.NewClient(c)
+	} else if authParams.ApplicationID != "" && authParams.PrivatePem != nil {
+		client = newGithubClient(authParams.PrivatePem, authParams.ApplicationID, 0)
+	} else {
+		return nil, fmt.Errorf("either GithubAuthParams AccessToken or ApplicationID and PrivatePem must be set")
+	}
 	if logger == nil {
 		logger = zap.NewNop()
 	}
+
+	limits, _, err := client.RateLimit.Get(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("failed initializing github client, err: %s", err)
+	}
+	logger.Debug(fmt.Sprintf("succesfully initiated github client, hourly rate limit: %d", limits.GetCore().Limit))
 
 	return &GitHubStore{
 		ownerFilter:           ownerFilter,
 		topicFilter:           topicFilter,
 		providerOwnerFilter:   providerOwnerFilter,
 		providerTopicFilter:   providerTopicFilter,
-		client:                github.NewClient(c),
+		client:                client,
 		moduleCache:           make(map[string][]*core.ModuleVersion),
 		providerVersionsCache: make(map[string]*core.ProviderVersions),
 		providerCache:         make(map[string]*core.Provider),
 		logger:                logger,
-	}
+	}, nil
 }
 
 // ListModuleVersions returns a list of module versions.
