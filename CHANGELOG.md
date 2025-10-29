@@ -6,6 +6,13 @@ SPDX-License-Identifier: MIT
 
 # Changelog
 
+## [0.21.0](https://github.com/nrkno/terraform-registry/compare/v0.20.1...v0.21.0) (2025-10-29)
+
+
+### Features
+
+* support authenticating as github app ([5183790](https://github.com/nrkno/terraform-registry/commit/51837900e73f456b54391160d00bb1157c474659))
+
 ## [0.20.1](https://github.com/nrkno/terraform-registry/compare/v0.20.0...v0.20.1) (2025-01-13)
 
 
