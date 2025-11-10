@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-github/v69/github"
+	"github.com/google/go-github/v76/github"
 	"github.com/matryer/is"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/nrkno/terraform-registry/pkg/core"
