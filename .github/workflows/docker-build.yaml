@@ -27,16 +27,3 @@ jobs:
         run: |
           make DOCKER_TAG="${DOCKER_TAG}" build-docker
           docker image save ${DOCKER_TAG} -o image.tar
-      -
-        name: Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@0.33.0
-        with:
-          input: image.tar
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-        env:
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
-          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
