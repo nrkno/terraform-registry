@@ -365,7 +365,7 @@ func s3Registry(reg *registry.Registry) {
 
 	_, err = awsCfg.Credentials.Retrieve(context.Background())
 	if err != nil {
-		logger.Fatal("AWS credentials not found")
+		logger.Fatal("AWS credentials not found", zap.Error(err))
 	}
 	s3Sess := awss3.NewFromConfig(awsCfg)
 
