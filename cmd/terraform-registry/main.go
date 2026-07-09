@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	awss3 "github.com/aws/aws-sdk-go/service/s3"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/nrkno/terraform-registry/pkg/registry"
 	"github.com/nrkno/terraform-registry/pkg/store/github"
 	"github.com/nrkno/terraform-registry/pkg/store/s3"
@@ -357,24 +357,19 @@ func s3Registry(reg *registry.Registry) {
 		logger.Fatal("Missing flag '-s3-bucket'")
 	}
 
-	sess, err := session.NewSession()
+	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(), awsconfig.WithRegion(S3Region))
 	if err != nil {
-		logger.Fatal("AWS session creation failed")
+		logger.Fatal("AWS config creation failed")
 	}
-	logger.Debug("AWS session created successfully")
+	logger.Debug("AWS config created successfully")
 
-	_, err = sess.Config.Credentials.Get()
+	_, err = awsCfg.Credentials.Retrieve(context.Background())
 	if err != nil {
-		logger.Fatal("AWS session credentials not found")
+		logger.Fatal("AWS credentials not found", zap.Error(err))
 	}
-	s3Sess := awss3.New(sess)
+	s3Sess := awss3.NewFromConfig(awsCfg)
 
 	store := s3.NewS3Store(s3Sess, S3Region, S3Bucket, logger.Named("s3 store"))
-	if err != nil {
-		logger.Fatal("failed to create S3 store",
-			zap.Error(err),
-		)
-	}
 	reg.SetModuleStore(store)
 }
 
