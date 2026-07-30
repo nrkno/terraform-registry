@@ -13,17 +13,16 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/nrkno/terraform-registry/pkg/core"
 	"go.uber.org/zap"
 )
 
 // S3API defines the subset of S3 client methods used by S3Store
 type S3API interface {
-	ListObjectsV2WithContext(ctx aws.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error)
-	HeadObjectWithContext(ctx aws.Context, input *s3.HeadObjectInput) (*s3.HeadObjectOutput, error)
+	ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
+	HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
 }
 
 // S3StoreInterface defines the interface for S3Store
@@ -34,7 +33,7 @@ type S3StoreInterface interface {
 
 // S3Store implements S3StoreInterface
 type S3Store struct {
-	client s3iface.S3API
+	client S3API
 	cache  map[string][]*core.ModuleVersion
 	region string
 	bucket string
@@ -42,7 +41,7 @@ type S3Store struct {
 	mut    sync.Mutex
 }
 
-func NewS3Store(client s3iface.S3API, region string, bucket string, logger *zap.Logger) *S3Store {
+func NewS3Store(client S3API, region string, bucket string, logger *zap.Logger) *S3Store {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
@@ -75,7 +74,7 @@ func (s *S3Store) fetchModuleVersions(ctx context.Context, address string) ([]*c
 		Bucket: aws.String(s.bucket),
 		Prefix: aws.String(p),
 	}
-	out, err := s.client.ListObjectsV2WithContext(ctx, in)
+	out, err := s.client.ListObjectsV2(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +122,7 @@ func (s *S3Store) fetchModuleVersion(ctx context.Context, address, version strin
 		s.logger.Warn("invalid module path requested: " + path)
 		return nil, fmt.Errorf("module version path '%s' is not valid", path)
 	}
-	_, err := s.client.HeadObjectWithContext(ctx, &s3.HeadObjectInput{
+	_, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(path + "/" + keySuffix),
 	})

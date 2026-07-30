@@ -8,10 +8,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/matryer/is"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -20,15 +19,14 @@ import (
 // MockS3API is a mock implementation for the S3API interface
 type MockS3API struct {
 	mock.Mock
-	s3iface.S3API
 }
 
-func (m *MockS3API) ListObjectsV2WithContext(ctx aws.Context, input *s3.ListObjectsV2Input, opts ...request.Option) (*s3.ListObjectsV2Output, error) {
+func (m *MockS3API) ListObjectsV2(ctx context.Context, input *s3.ListObjectsV2Input, opts ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
 	args := m.Called(ctx, input)
 	return args.Get(0).(*s3.ListObjectsV2Output), args.Error(1)
 }
 
-func (m *MockS3API) HeadObjectWithContext(ctx aws.Context, input *s3.HeadObjectInput, opts ...request.Option) (*s3.HeadObjectOutput, error) {
+func (m *MockS3API) HeadObject(ctx context.Context, input *s3.HeadObjectInput, opts ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
 	args := m.Called(ctx, input)
 	return args.Get(0).(*s3.HeadObjectOutput), args.Error(1)
 }
@@ -39,8 +37,8 @@ func TestListModuleVersions(t *testing.T) {
 
 	store := NewS3Store(mockS3, "us-east-1", "mytestbucket", zap.NewNop())
 
-	mockS3.On("ListObjectsV2WithContext", mock.Anything, mock.Anything).Return(&s3.ListObjectsV2Output{
-		Contents: []*s3.Object{
+	mockS3.On("ListObjectsV2", mock.Anything, mock.Anything).Return(&s3.ListObjectsV2Output{
+		Contents: []types.Object{
 			{Key: aws.String("testnamespace/testname/testprovider/1.0.0/1.0.0.zip")},
 			{Key: aws.String("testnamespace/testname/testprovider/1.1.1/1.1.1.zip")},
 		},
@@ -62,7 +60,7 @@ func TestGetModuleVersion(t *testing.T) {
 
 	t.Run("returns matching version", func(t *testing.T) {
 		is := is.New(t)
-		mockS3.On("HeadObjectWithContext", mock.Anything, mock.Anything).Return(&s3.HeadObjectOutput{}, nil)
+		mockS3.On("HeadObject", mock.Anything, mock.Anything).Return(&s3.HeadObjectOutput{}, nil)
 		ver, err := store.GetModuleVersion(context.Background(), "testnamespace", "testname", "testprovider", "1.0.0")
 		is.True(err == nil)
 		is.Equal(ver.Version, "1.0.0")
