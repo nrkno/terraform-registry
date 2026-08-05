@@ -8,7 +8,7 @@ go 1.25.0
 
 require (
 	github.com/ProtonMail/go-crypto v1.3.0
-	github.com/aws/aws-sdk-go v1.55.7
+	github.com/aws/aws-sdk-go v1.55.8
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-github/v76 v76.0.0
