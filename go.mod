@@ -16,7 +16,7 @@ require (
 	github.com/matryer/is v1.4.1
 	github.com/migueleliasweb/go-github-mock v1.5.0
 	github.com/stretchr/testify v1.10.0
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.28.0
 	golang.org/x/oauth2 v0.32.0
 )
 
