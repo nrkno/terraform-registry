@@ -6,7 +6,9 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -201,6 +203,187 @@ func TestListModuleVersions(t *testing.T) {
 		is.Equal(versions, nil)
 	})
 
+}
+
+func Test_isTransientError(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		transient bool
+	}{
+		{
+			name:      "nil error",
+			err:       nil,
+			transient: false,
+		},
+		{
+			name:      "generic error",
+			err:       fmt.Errorf("something went wrong"),
+			transient: false,
+		},
+		{
+			name: "rate limit error",
+			err: &github.RateLimitError{
+				Response: &http.Response{StatusCode: 403},
+				Message:  "rate limit exceeded",
+			},
+			transient: true,
+		},
+		{
+			name: "abuse rate limit error",
+			err: &github.AbuseRateLimitError{
+				Response: &http.Response{StatusCode: 403},
+				Message:  "abuse detection",
+			},
+			transient: true,
+		},
+		{
+			name: "401 unauthorized",
+			err: &github.ErrorResponse{
+				Response: &http.Response{
+					StatusCode: 401,
+					Request:    &http.Request{Method: "GET", URL: &url.URL{Path: "/repos/test"}},
+				},
+				Message: "Bad credentials",
+			},
+			transient: true,
+		},
+		{
+			name: "403 forbidden",
+			err: &github.ErrorResponse{
+				Response: &http.Response{
+					StatusCode: 403,
+					Request:    &http.Request{Method: "GET", URL: &url.URL{Path: "/repos/test"}},
+				},
+				Message: "Forbidden",
+			},
+			transient: true,
+		},
+		{
+			name: "500 internal server error",
+			err: &github.ErrorResponse{
+				Response: &http.Response{
+					StatusCode: 500,
+					Request:    &http.Request{Method: "GET", URL: &url.URL{Path: "/repos/test"}},
+				},
+				Message: "Internal Server Error",
+			},
+			transient: true,
+		},
+		{
+			name: "502 bad gateway",
+			err: &github.ErrorResponse{
+				Response: &http.Response{
+					StatusCode: 502,
+					Request:    &http.Request{Method: "GET", URL: &url.URL{Path: "/repos/test"}},
+				},
+				Message: "Bad Gateway",
+			},
+			transient: true,
+		},
+		{
+			name: "404 not found - not transient",
+			err: &github.ErrorResponse{
+				Response: &http.Response{
+					StatusCode: 404,
+					Request:    &http.Request{Method: "GET", URL: &url.URL{Path: "/repos/test"}},
+				},
+				Message: "Not Found",
+			},
+			transient: false,
+		},
+		{
+			name: "422 unprocessable entity - not transient",
+			err: &github.ErrorResponse{
+				Response: &http.Response{
+					StatusCode: 422,
+					Request:    &http.Request{Method: "GET", URL: &url.URL{Path: "/repos/test"}},
+				},
+				Message: "Validation Failed",
+			},
+			transient: false,
+		},
+		{
+			name:      "wrapped transient error",
+			err:       fmt.Errorf("download failed: %w", &github.ErrorResponse{Response: &http.Response{StatusCode: 401, Request: &http.Request{Method: "GET", URL: &url.URL{Path: "/test"}}}, Message: "Bad credentials"}),
+			transient: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isTransientError(tt.err)
+			if result != tt.transient {
+				t.Errorf("isTransientError() = %v, want %v for error: %v", result, tt.transient, tt.err)
+			}
+		})
+	}
+}
+
+func Test_isRateLimitError(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		rateLimit bool
+	}{
+		{
+			name:      "nil error",
+			err:       nil,
+			rateLimit: false,
+		},
+		{
+			name:      "generic error",
+			err:       fmt.Errorf("something went wrong"),
+			rateLimit: false,
+		},
+		{
+			name: "rate limit error",
+			err: &github.RateLimitError{
+				Response: &http.Response{StatusCode: 403},
+				Message:  "rate limit exceeded",
+			},
+			rateLimit: true,
+		},
+		{
+			name: "abuse rate limit error",
+			err: &github.AbuseRateLimitError{
+				Response: &http.Response{StatusCode: 403},
+				Message:  "abuse detection",
+			},
+			rateLimit: true,
+		},
+		{
+			name: "401 unauthorized - not a rate limit",
+			err: &github.ErrorResponse{
+				Response: &http.Response{
+					StatusCode: 401,
+					Request:    &http.Request{Method: "GET", URL: &url.URL{Path: "/repos/test"}},
+				},
+				Message: "Bad credentials",
+			},
+			rateLimit: false,
+		},
+		{
+			name: "500 server error - not a rate limit",
+			err: &github.ErrorResponse{
+				Response: &http.Response{
+					StatusCode: 500,
+					Request:    &http.Request{Method: "GET", URL: &url.URL{Path: "/repos/test"}},
+				},
+				Message: "Internal Server Error",
+			},
+			rateLimit: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isRateLimitError(tt.err)
+			if result != tt.rateLimit {
+				t.Errorf("isRateLimitError() = %v, want %v for error: %v", result, tt.rateLimit, tt.err)
+			}
+		})
+	}
 }
 
 func Test_extractOsArch(t *testing.T) {
