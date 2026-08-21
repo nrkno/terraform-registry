@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -83,9 +84,7 @@ func (reg *Registry) GetAuthTokens() map[string]string {
 
 	// Make sure map can't be modified indirectly
 	m := make(map[string]string, len(reg.authTokens))
-	for k, v := range reg.authTokens {
-		m[k] = v
-	}
+	maps.Copy(m, reg.authTokens)
 	return m
 }
 
@@ -93,9 +92,7 @@ func (reg *Registry) GetAuthTokens() map[string]string {
 func (reg *Registry) SetAuthTokens(authTokens map[string]string) {
 	// Make sure map can't be modified indirectly
 	m := make(map[string]string, len(authTokens))
-	for k, v := range authTokens {
-		m[k] = v
-	}
+	maps.Copy(m, authTokens)
 
 	reg.tokenMut.Lock()
 	reg.authTokens = m
@@ -499,7 +496,7 @@ func (reg *Registry) ProviderDownloadAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 			return reg.AssetDownloadAuthSecret, nil
 		})
 

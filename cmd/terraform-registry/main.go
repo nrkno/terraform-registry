@@ -129,7 +129,7 @@ func main() {
 	defer logger.Sync()
 
 	// Load environment from files
-	for _, item := range strings.Split(envJSONFiles, ",") {
+	for item := range strings.SplitSeq(envJSONFiles, ",") {
 		if len(item) == 0 {
 			continue
 		}
