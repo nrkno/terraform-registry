@@ -3,14 +3,16 @@
 # SPDX-License-Identifier: MIT
 name: "Golang Static checker"
 on:
- - pull_request
+  pull_request:
+    paths-ignore:
+    - '.github/**'
 
 jobs:
   staticcheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-go@v6.5.0
+      - uses: actions/setup-go@v7.0.0
         with:
           go-version-file: "go.mod"
         id: setup-go
