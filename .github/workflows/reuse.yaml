@@ -8,6 +8,8 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+    - '.github/**'
 
 name: REUSE Compliance Check
 jobs:
