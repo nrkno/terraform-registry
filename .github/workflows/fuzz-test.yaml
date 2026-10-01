@@ -6,7 +6,7 @@ name: Fuzz Test
 on:
   pull_request:
     paths-ignore:
-    - '.github/'
+    - '.github/**'
     branches:
       - main
 
