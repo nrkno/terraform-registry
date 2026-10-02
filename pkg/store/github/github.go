@@ -35,6 +35,48 @@ type SHASum struct {
 	FileName string
 }
 
+// isTransientError returns true if the error is a transient API/network error
+// (e.g. bad credentials, rate limiting, server errors) that should not cause
+// a release to be permanently marked as invalid.
+func isTransientError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var rateLimitErr *github.RateLimitError
+	if errors.As(err, &rateLimitErr) {
+		return true
+	}
+
+	var abuseErr *github.AbuseRateLimitError
+	if errors.As(err, &abuseErr) {
+		return true
+	}
+
+	var ghErr *github.ErrorResponse
+	if errors.As(err, &ghErr) && ghErr.Response != nil {
+		code := ghErr.Response.StatusCode
+		if code == http.StatusUnauthorized || code == http.StatusForbidden || code >= http.StatusInternalServerError {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isRateLimitError returns true if the error is a GitHub rate limit or
+// abuse rate limit error. These should abort the entire reload since
+// subsequent API calls will also fail.
+func isRateLimitError(err error) bool {
+	var rateLimitErr *github.RateLimitError
+	if errors.As(err, &rateLimitErr) {
+		return true
+	}
+
+	var abuseErr *github.AbuseRateLimitError
+	return errors.As(err, &abuseErr)
+}
+
 func parseSHASumsFile(r io.Reader) map[string]string {
 	sums := make(map[string]string)
 
@@ -234,8 +276,6 @@ func (s *GitHubStore) findAsset(ctx context.Context, owner string, repo string, 
 // Should be called at least once after initialisation and probably on regular
 // intervals afterward to keep providerCache up-to-date.
 func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
-	var rateLimitErr *github.RateLimitError
-
 	repos, err := s.searchProviderRepositories(ctx)
 	if err != nil {
 		return err
@@ -281,8 +321,13 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 
 			SHASums, SHASumURL, SHASumFileName, err := s.getSHA256Sums(ctx, owner, name, release.Assets)
 			if err != nil {
-				if errors.As(err, &rateLimitErr) {
-					return err
+				if isTransientError(err) {
+					if isRateLimitError(err) {
+						s.logger.Error(fmt.Sprintf("rate limited processing release [%s/%s], aborting cache reload: %s", nameKey, version, err))
+						return err
+					}
+					s.logger.Warn(fmt.Sprintf("transient API error processing release [%s/%s], skipping: %s", nameKey, version, err))
+					continue
 				}
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - could not find SHA checksums: %s", nameKey, version, err))
 				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
@@ -291,9 +336,6 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 
 			// not considered a valid release if a shasum file was not part of the release
 			if SHASumURL == "" {
-				if errors.As(err, &rateLimitErr) {
-					return err
-				}
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - could not find SHA checksums", nameKey, version))
 				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
 				continue
@@ -301,8 +343,13 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 
 			providerProtocols, err := s.getProviderProtocols(ctx, owner, name, release.Assets)
 			if err != nil {
-				if errors.As(err, &rateLimitErr) {
-					return err
+				if isTransientError(err) {
+					if isRateLimitError(err) {
+						s.logger.Error(fmt.Sprintf("rate limited processing release [%s/%s], aborting cache reload: %s", nameKey, version, err))
+						return err
+					}
+					s.logger.Warn(fmt.Sprintf("transient API error processing release [%s/%s], skipping: %s", nameKey, version, err))
+					continue
 				}
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - unable to identify provider protocol", nameKey, version))
 				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
@@ -311,8 +358,13 @@ func (s *GitHubStore) ReloadProviderCache(ctx context.Context) error {
 
 			keys, err := s.getGPGPublicKey(ctx, release, owner, name)
 			if err != nil || len(keys) != 1 {
-				if errors.As(err, &rateLimitErr) {
-					return err
+				if isTransientError(err) {
+					if isRateLimitError(err) {
+						s.logger.Error(fmt.Sprintf("rate limited processing release [%s/%s], aborting cache reload: %s", nameKey, version, err))
+						return err
+					}
+					s.logger.Warn(fmt.Sprintf("transient API error processing release [%s/%s], skipping: %s", nameKey, version, err))
+					continue
 				}
 				s.logger.Warn(fmt.Sprintf("not a valid release [%s/%s] - unable to get GPG Public Key", nameKey, version))
 				s.providerIgnoreCache.Store(cacheKey(nameKey, version), true)
